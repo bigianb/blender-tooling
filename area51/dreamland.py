@@ -18,3 +18,8 @@ playsurface = Playsurface()
 playsurface.init(dreamland_dfs.get_file('LEVEL_DATA.PLAYSURFACE'))
 print('\n\nPlaysurface:\n')
 playsurface.describe()
+
+dreamland_resource_dfs = Dfs()
+dreamland_resource_dfs.open(game_root+'/LEVELS/CAMPAIGN/DREAMLND/RESOURCE')
+print('\n\nRESOURCE.DFS contents:\n')
+dreamland_resource_dfs.list_files()
