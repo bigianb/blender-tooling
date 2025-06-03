@@ -1,10 +1,14 @@
+import os
+
 from a51lib.dfs import Dfs
 from a51lib.playsurface import Playsurface
 
-game_root = '/Users/ian/a51/pc/resources/app/game'
+game_root = os.environ.get('A51_GAME_DATA', '/Users/ian/a51/pc/resources/app/game')
 
 dreamland_dfs = Dfs()
 dreamland_dfs.open(game_root+'/LEVELS/CAMPAIGN/DREAMLND/LEVEL')
+
+print('\n\nLEVEL.DFS contents:\n')
 dreamland_dfs.list_files()
 
 #loadscript = dreamland_dfs.get_file('LOADSCRIPT.TXT')
@@ -12,4 +16,5 @@ dreamland_dfs.list_files()
 
 playsurface = Playsurface()
 playsurface.init(dreamland_dfs.get_file('LEVEL_DATA.PLAYSURFACE'))
-
+print('\n\nPlaysurface:\n')
+playsurface.describe()

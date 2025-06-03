@@ -1,6 +1,5 @@
 import struct
 
-
 def read_string(file, string_data):
     string_offset = struct.unpack('I', file.read(4))[0]
     output = ''
@@ -47,7 +46,7 @@ class Dfs:
 
         self.file_entries = []
         dfs_file.seek(file_entry_offset)
-        for i in range(0, self.num_files):
+        for _ in range(0, self.num_files):
             entry = {}
             entry['file_name1'] = read_string(dfs_file, string_data)
             entry['file_name2'] = read_string(dfs_file, string_data)
@@ -62,7 +61,7 @@ class Dfs:
             name = entry['file_name1'] + \
                 entry['file_name2'] + entry['ext_name']
             print(
-                f"{name:<32} start = {entry['data_offset']:>8},  length = {entry['data_length']}")
+                f"{name:<32} start:{entry['data_offset']:>8},  length:{entry['data_length']:>8}")
 
     def get_file(self, sub_filename):
         """ Get the data for a sub-file. Assumes that there is only one data file """
