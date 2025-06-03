@@ -46,9 +46,9 @@ class Playsurface:
 
     def read_zone_info(self, bin_data, offset):
         zone = {}
-        file_offset = struct.unpack_from('I', bin_data, offset+4)[0]
-        num_surfaces = struct.unpack_from('I', bin_data, offset+8)[0]
-        num_colours = struct.unpack_from('I', bin_data, offset+16)[0]
+       # file_offset = struct.unpack_from('I', bin_data, offset+4)[0]
+       # num_surfaces = struct.unpack_from('I', bin_data, offset+8)[0]
+       # num_colours = struct.unpack_from('I', bin_data, offset+16)[0]
         offset += 28
 
         # todo read surfaces
@@ -56,9 +56,9 @@ class Playsurface:
         return offset, zone
 
     def readSpatialDB(self, bin_data, offset):
-        cell_size = struct.unpack_from('I', bin_data, offset)[0]
+        # cell_size = struct.unpack_from('I', bin_data, offset)[0]
         num_cells = struct.unpack_from('I', bin_data, offset+4)[0]
-        num_surfaces = struct.unpack_from('I', bin_data, offset+8)[0]
+        # num_surfaces = struct.unpack_from('I', bin_data, offset+8)[0]
         offset += 12
         offset += 8 * 1021  # Skip hash table
         offset += num_cells * 24    # Skip cell data
