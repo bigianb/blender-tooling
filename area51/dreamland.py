@@ -1,4 +1,5 @@
 import os
+import bpy
 
 from a51lib.dfs import Dfs
 from a51lib.playsurface import Playsurface
@@ -25,6 +26,7 @@ dreamland_resource_dfs.open(game_root+'/LEVELS/CAMPAIGN/DREAMLND/RESOURCE')
 print('\n\nRESOURCE.DFS contents:\n')
 dreamland_resource_dfs.list_files()
 
+rigid_geoms = []
 for gname in playsurface.geoms:
     geom_data = dreamland_resource_dfs.get_file(gname)
     if geom_data == None:
@@ -35,5 +37,14 @@ for gname in playsurface.geoms:
     if geom.is_valid():
         print(f'\nread {gname}')
         geom.describe()
+        rigid_geoms.append(geom)
     else:
         print(f'Failed to read {gname}')
+
+# remove mesh Cube
+if "Cube" in bpy.data.meshes:
+    mesh = bpy.data.meshes["Cube"]
+    print("removing mesh", mesh)
+    bpy.data.meshes.remove(mesh)
+
+bpy.ops.wm.save_as_mainfile(filepath='dreamland.blend', check_existing=False)

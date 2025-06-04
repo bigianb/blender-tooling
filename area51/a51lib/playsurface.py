@@ -9,17 +9,15 @@ def read_z_string(data, offset):
 
 
 class Surface:
-    geom_name = ''
+    geom_name: str
 
 class Playsurface:
     
-    version = -1
-    num_zones = 0
-    num_portals = 0
-    num_geoms = 0
-    geoms = []
-    zones = []
-    portals = []
+    version: int
+    num_zones: int
+    num_portals: int
+    num_geoms: int
+    geoms: list[str]
 
     def init(self, bin_data):
         ints = struct.unpack_from('IIII', bin_data)

@@ -5,6 +5,22 @@ Various scripts to deal with Blender.
 
 In general, open the folder in VSCode.
 
+# Python version
+
+The Blender python module (bpy) currently requires python version 3.11
+It's easier to create a virtual environment using python 3.11 and install bpy into it.
+
+see https://docs.python.org/3/tutorial/venv.html
+
+## For exmaple on a Mac
+```
+python3.11 -m venv venv       
+source venv/bin/activate
+pip install bpy
+```
+
+Blender API: https://docs.blender.org/api/current/index.html
+
 # Area 51
 
 Set the environment variable `A51_GAME_DATA` to the root of the PC game data (the directory which contains the file BOOT.DFS)
