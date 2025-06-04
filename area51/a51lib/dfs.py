@@ -1,3 +1,4 @@
+from io import BufferedReader
 import struct
 
 def read_string(file, string_data):
@@ -20,7 +21,7 @@ class Dfs:
         with open(base_filename+'.DFS', 'rb') as dfsFile:
             self.read_header(dfsFile)
 
-    def read_header(self, dfs_file):
+    def read_header(self, dfs_file: BufferedReader):
         identifier = dfs_file.read(4).decode('utf-8')
         if identifier != 'SFDX':
             self.is_valid = False
@@ -65,8 +66,10 @@ class Dfs:
 
     def get_file(self, sub_filename):
         """ Get the data for a sub-file. Assumes that there is only one data file """
+        target = sub_filename.casefold()
         for entry in self.file_entries:
-            if sub_filename == entry['file_name1'] + entry['file_name2'] + entry['ext_name']:
+            entry_name = (entry['file_name1'] + entry['file_name2'] + entry['ext_name']).casefold()
+            if target == entry_name:
                 with open(self.base_filename+'.000', 'rb') as data_file:
                     data_file.seek(entry['data_offset'])
                     return data_file.read(entry['data_length'])
