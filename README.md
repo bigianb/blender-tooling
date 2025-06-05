@@ -12,7 +12,7 @@ It's easier to create a virtual environment using python 3.11 and install bpy in
 
 see https://docs.python.org/3/tutorial/venv.html
 
-## For exmaple on a Mac
+## For example on a Mac
 ```
 python3.11 -m venv venv       
 source venv/bin/activate

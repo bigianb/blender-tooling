@@ -42,9 +42,9 @@ for gname in playsurface.geoms:
         print(f'Failed to read {gname}')
 
 # remove mesh Cube
-if "Cube" in bpy.data.meshes:
-    mesh = bpy.data.meshes["Cube"]
-    print("removing mesh", mesh)
-    bpy.data.meshes.remove(mesh)
+# if "Cube" in bpy.data.meshes:
+#     mesh = bpy.data.meshes["Cube"]
+#     print("removing mesh", mesh)
+#     bpy.data.meshes.remove(mesh)
 
-bpy.ops.wm.save_as_mainfile(filepath='dreamland.blend', check_existing=False)
+# bpy.ops.wm.save_as_mainfile(filepath='dreamland.blend', check_existing=False)

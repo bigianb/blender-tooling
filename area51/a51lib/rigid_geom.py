@@ -7,17 +7,34 @@ class RigidVertex:
     colour: list[int]
     uv: list[float]
 
+    def __init__(self):
+        self.position = [0.0, 0.0, 0.0]
+        self.normal = [0.0, 0.0, 0.0]
+        self.colour = [255, 255, 255, 255]
+        self.uv = [0.0, 0.0]
+
 class RigidDlist:
-    indices: list[int] = []
-    vertices: list[RigidVertex] = []
+    indices: list[int]
+    vertices: list[RigidVertex]
     bone_index: int
+
+    def __init__(self):
+        self.indices = []
+        self.vertices = []
+        self.bone_index = -1
 
 class RigidGeom:
 
     # use composition rather than inheritance
-    geom: Geom = None
-    valid = False
-    dlists: list[RigidDlist] = []
+    geom: Geom
+    valid: bool
+    dlists: list[RigidDlist]
+
+    def __init__(self):
+        self.geom = None
+        self.valid = False
+        self.dlists = []
+        self.num_dlist = 0
 
     def is_valid(self):
         return self.valid and self.geom != None and self.geom.is_valid()
@@ -61,6 +78,16 @@ class RigidGeom:
 
             num_vertices = inev_file.read_int()
             vertices_cursor = inev_file.resolve_pointer(num_vertices)
+            inev_file.push_cursor(vertices_cursor)
+            for _ in range(num_vertices):
+                vertex = RigidVertex()
+                vertex.position = inev_file.read_float_array(3)
+                vertex.normal = inev_file.read_float_array(3)
+                vertex.colour = inev_file.read_uint8_array(4)
+                vertex.uv = inev_file.read_float_array(2)
+                dl.vertices.append(vertex)
+            inev_file.pop_cursor()
+
             dl.bone_index = inev_file.read_int()
             inev_file.skip(4)
             self.dlists.append(dl)

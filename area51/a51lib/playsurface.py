@@ -7,9 +7,21 @@ def read_z_string(data, offset):
         offset += 1
     return output
 
+class ZoneInfo:
+    def __init__(self):
+        self.surfaces = []
+        self.colours = []
 
 class Surface:
-    geom_name: str
+    def __init__(self):
+        self.l2w = [0.0] * 16  # 4x4 matrix
+        self.bounding_box = [0.0] * 8  # min_x, min_y, min_z, min_w, max_x, max_y, max_z, max_w
+        self.attr_bits = 0
+        self.colour_index = 0
+        self.geom_name = ''
+        self.render_flags = 0
+        self.zone_1 = 0
+        self.zone_2 = 0
 
 class Playsurface:
     
@@ -35,21 +47,42 @@ class Playsurface:
         self.zones = []
         for _ in range(self.num_zones):
             (index, zone) = self.read_zone_info(bin_data, index)
-            self.zones.append(zone)
+            if len(zone.surfaces) > 0:
+                self.zones.append(zone)
 
         self.portals = []
         for _ in range(self.num_portals):
             (index, portal) = self.read_zone_info(bin_data, index)
-            self.portals.append(portal)
+            if len(zone.surfaces) > 0:
+                self.portals.append(portal)
 
     def read_zone_info(self, bin_data, offset):
-        zone = {}
-       # file_offset = struct.unpack_from('I', bin_data, offset+4)[0]
-       # num_surfaces = struct.unpack_from('I', bin_data, offset+8)[0]
-       # num_colours = struct.unpack_from('I', bin_data, offset+16)[0]
+        zone = ZoneInfo()
+        file_offset = struct.unpack_from('I', bin_data, offset+4)[0]
+        num_surfaces = struct.unpack_from('I', bin_data, offset+8)[0]
+        num_colours = struct.unpack_from('I', bin_data, offset+16)[0]
         offset += 28
 
-        # todo read surfaces
+        zone_info_offset = file_offset
+        for _ in range(num_surfaces):
+            surface = Surface()
+            surface.l2w = struct.unpack_from('16f', bin_data, zone_info_offset)
+            zone_info_offset += 64  # 4x4 matrix is 16 floats, each float is 4 bytes)
+            surface.bounding_box = struct.unpack_from('8f', bin_data, zone_info_offset)
+            zone_info_offset += 32
+            surface.attr_bits = struct.unpack_from('I', bin_data, zone_info_offset)[0]
+            zone_info_offset += 4
+            surface.colour_index = struct.unpack_from('I', bin_data, zone_info_offset)[0]
+            zone_info_offset += 4
+            zone_info_offset += 4*4
+            surface.zone_1 = struct.unpack_from('B', bin_data, zone_info_offset)[0]
+            surface.zone_2 = struct.unpack_from('B', bin_data, zone_info_offset + 1)[0]
+            geom_indx = struct.unpack_from('H', bin_data, zone_info_offset + 2)[0]
+            surface.geom_name = self.geoms[geom_indx] if geom_indx < len(self.geoms) else ''
+            zone_info_offset += 4
+            surface.render_flags = struct.unpack_from('I', bin_data, zone_info_offset)[0]
+            zone_info_offset += 4
+            zone.surfaces.append(surface)
 
         return offset, zone
 

@@ -99,3 +99,16 @@ class InevFile:
         bb = struct.unpack_from('ffffffff', self.data, self.cursor)
         self.cursor += 4 * 4 * 2
         return bb
+
+    def read_float_array(self, count):
+        """ Reads an array of floats. """
+        start = self.cursor
+        self.cursor += 4 * count
+        return struct.unpack_from(f'{count}f', self.data, start)
+    
+    def read_uint8_array(self, count):
+        """ Reads an array of unsigned 8 bit integers. """
+        start = self.cursor
+        self.cursor += count
+        return struct.unpack_from(f'{count}B', self.data, start)
+    
