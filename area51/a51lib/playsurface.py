@@ -7,11 +7,6 @@ def read_z_string(data, offset):
         offset += 1
     return output
 
-class ZoneInfo:
-    def __init__(self):
-        self.surfaces = []
-        self.colours = []
-
 class Surface:
     def __init__(self):
         self.l2w = [0.0] * 16  # 4x4 matrix
@@ -23,6 +18,12 @@ class Surface:
         self.zone_1 = 0
         self.zone_2 = 0
 
+class ZoneInfo:
+    surfaces: list[Surface]
+    def __init__(self):
+        self.surfaces = []
+        self.colours = []
+
 class Playsurface:
     
     version: int
@@ -30,6 +31,8 @@ class Playsurface:
     num_portals: int
     num_geoms: int
     geoms: list[str]
+    zones: list[ZoneInfo]
+    portals: list[ZoneInfo]
 
     def init(self, bin_data):
         ints = struct.unpack_from('IIII', bin_data)
