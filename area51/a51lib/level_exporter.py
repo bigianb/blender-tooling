@@ -16,6 +16,7 @@ def export_surfaces(col, zone, meshes, rigid_geoms, zone_no):
 
             verts = []
             faces = []
+            uvs = []
 
             v0_idx = 0
             for dlist in geom.dlists:
@@ -23,12 +24,28 @@ def export_surfaces(col, zone, meshes, rigid_geoms, zone_no):
                     pos = v.position
                     verts.append((pos[0], pos[1], pos[2]))
                 for i in range(0, len(dlist.indices), 3):
-                    faces.append(
-                        (v0_idx+dlist.indices[i], v0_idx+dlist.indices[i+1], v0_idx+dlist.indices[i+2]))
+                    vidx1 = dlist.indices[i]
+                    vidx2 = dlist.indices[i+1]
+                    vidx3 = dlist.indices[i+2]
+                    faces.append((v0_idx+vidx1, v0_idx+vidx2, v0_idx+vidx3))
+                    
+                    vertex = dlist.vertices[vidx1]
+                    uvs.append(vertex.uv[0])
+                    uvs.append(vertex.uv[1])
+                    vertex = dlist.vertices[vidx2]
+                    uvs.append(vertex.uv[0])
+                    uvs.append(vertex.uv[1])
+                    vertex = dlist.vertices[vidx3]
+                    uvs.append(vertex.uv[0])
+                    uvs.append(vertex.uv[1])
                 v0_idx += len(dlist.vertices)
 
             mesh.from_pydata(verts, [], faces)
             meshes[surface.geom_name] = mesh
+
+            uv_data = mesh.uv_layers.new()
+            uv_data.data.foreach_set('uv', uvs)
+
 
         obj = bpy.data.objects.new(
             'obj_z'+str(zone_no) + '_s'+str(surf_no), mesh)
