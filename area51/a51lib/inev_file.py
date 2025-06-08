@@ -100,6 +100,12 @@ class InevFile:
         self.cursor += 4 * 4 * 2
         return bb
 
+    def read_byte_array(self, count):
+        """ Reads a byte array of given count. """
+        start = self.cursor
+        self.cursor += count
+        return self.data[start:start+count] #struct.unpack_from(f'{count}B', self.data, start)
+
     def read_float_array(self, count):
         """ Reads an array of floats. """
         start = self.cursor

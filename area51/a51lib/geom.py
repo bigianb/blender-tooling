@@ -1,11 +1,44 @@
 
 from .inev_file import InevFile
 
+class Material:
+    detail_scale: float
+    fixed_alpha:float
+    flags: int
+    numTextures: int
+    texture_index: int
+
+    def __init__(self):
+        self.detail_scale = 1.0
+        self.fixed_alpha = 1.0
+        self.flags = 0
+        self.numTextures = 0
+        self.texture_index = -1
+
+class Texture:
+    filename: str
+    description: str
+    filename_offset: int
+    desc_offset: int
+    def __init__(self):
+        self.filename = ''
+
+        self.filename_offset = 0
+        self.desc_offset = 0
 
 class Geom:
     """ Base of rgidgeom or skingeom. """
 
-    valid = False
+    valid: bool
+    textures: list[Texture]
+    materials: list[Material]
+    string_data: bytearray
+
+    def __init__(self):
+        self.valid = False
+        self.bounding_box = [0.0] * 6
+        self.textures = []
+        self.materials = []
 
     def read(self, bin_data):
         inev_file = InevFile(bin_data)
@@ -61,8 +94,15 @@ class Geom:
         # inevFile.readArray(materials, numMaterials);
         inev_file.skip(4)
         
-        # inevFile.readArray(textures, numTextures);
-        inev_file.skip(4)
+        array_cursor = inev_file.resolve_pointer(self.num_textures)
+        inev_file.push_cursor(array_cursor)
+        for _ in range(self.num_textures):
+            tex = Texture()
+            tex.desc_offset = inev_file.read_i16()
+            tex.filename_offset = inev_file.read_i16()
+
+            self.textures.append(tex)
+        inev_file.pop_cursor()
         
         # inevFile.readArray(uvKeys, numUVKeys);
         inev_file.skip(4)
@@ -82,11 +122,27 @@ class Geom:
         inev_file.skip(4)
 
         # inevFile.readNativeArray(stringData, stringDataSize);
-        inev_file.skip(4)
+        array_cursor = inev_file.resolve_pointer(self.string_data_size)
+        inev_file.push_cursor(array_cursor)
+        self.string_data = inev_file.read_byte_array(self.string_data_size)
+        inev_file.pop_cursor()
 
         inev_file.skip(4) # Read the unused handle
 
+        for tex in self.textures:
+            tex.filename = self.lookup_string(tex.filename_offset)
+            tex.description = self.lookup_string(tex.desc_offset)
+
         self.valid = True
+
+    def lookup_string(self, offset):
+        """ Lookup a string in the string data. """
+        if offset < 0 or offset >= len(self.string_data):
+            return ''
+        end = self.string_data.find(0, offset)
+        if end == -1:
+            end = len(self.string_data)
+        return self.string_data[offset:end].decode('utf-8')
 
     def is_valid(self):
         return self.valid
