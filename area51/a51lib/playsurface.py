@@ -56,7 +56,7 @@ class Playsurface:
         self.portals = []
         for _ in range(self.num_portals):
             (index, portal) = self.read_zone_info(bin_data, index)
-            if len(zone.surfaces) > 0:
+            if len(portal.surfaces) > 0:
                 self.portals.append(portal)
 
     def read_zone_info(self, bin_data, offset):
