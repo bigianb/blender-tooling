@@ -11,18 +11,20 @@ def export_surface(surface, name_prefix, col, meshes, materials, rigid_geoms: li
     geom = rigid_geoms[surface.geom_name]
     mesh_no = 0
     for geom_mesh in geom.geom.meshes:
-        key = surface.geom_name + geom_mesh.name
-        if key in meshes:
-            mesh = meshes[key]
-        else:
-            mesh = bpy.data.meshes.new(key)
+        for submesh_idx in range (geom_mesh.idx_sub_mesh, geom_mesh.idx_sub_mesh + geom_mesh.num_sub_meshes):
+            submesh = geom.geom.sub_meshes[submesh_idx]
+            key = surface.geom_name + '_' + geom_mesh.name + '_' + str(submesh_idx)
+            if key in meshes:
+                mesh = meshes[key]
+            else:
+                mesh = bpy.data.meshes.new(key)
 
-            verts = []
-            faces = []
-            uvs = []
-
-            v0_idx = 0
-            for dlist in geom.dlists:
+                verts = []
+                faces = []
+                uvs = []
+                
+                dlist = geom.dlists[submesh.idx_dlist]
+                
                 for v in dlist.vertices:
                     pos = v.position
                     verts.append((pos[0], pos[1], pos[2]))
@@ -30,7 +32,7 @@ def export_surface(surface, name_prefix, col, meshes, materials, rigid_geoms: li
                     vidx1 = dlist.indices[i]
                     vidx2 = dlist.indices[i+1]
                     vidx3 = dlist.indices[i+2]
-                    faces.append((v0_idx+vidx1, v0_idx+vidx2, v0_idx+vidx3))
+                    faces.append((vidx1, vidx2, vidx3))
                     
                     vertex = dlist.vertices[vidx1]
                     uvs.append(vertex.uv[0])
@@ -41,20 +43,18 @@ def export_surface(surface, name_prefix, col, meshes, materials, rigid_geoms: li
                     vertex = dlist.vertices[vidx3]
                     uvs.append(vertex.uv[0])
                     uvs.append(vertex.uv[1])
-                v0_idx += len(dlist.vertices)
+                    
 
-            mesh.from_pydata(verts, [], faces)
-            meshes[surface.geom_name] = mesh
+                mesh.from_pydata(verts, [], faces)
+                meshes[key] = mesh
 
-            uv_data = mesh.uv_layers.new()
-            uv_data.data.foreach_set('uv', uvs)
-                
-        obj = bpy.data.objects.new(name_prefix + '_' + str(mesh_no), mesh)
+                uv_data = mesh.uv_layers.new()
+                uv_data.data.foreach_set('uv', uvs)
+                    
+            obj = bpy.data.objects.new(name_prefix + '_' + str(mesh_no) + '_' + str(submesh_idx), mesh)
         
-        if len(geom.geom.textures) > 0:
-            # TODO: this is a hack. We should reference the materal used by the mesh.
-            # For materials we should use nodes to do it properly.
-            texture = geom.geom.textures[0]
+            texture_idx = geom.geom.materials[submesh.idx_material].texture_index
+            texture = geom.geom.textures[texture_idx]
             if texture.filename in materials:
                 material = materials[texture.filename]
             else:
@@ -81,11 +81,10 @@ def export_surface(surface, name_prefix, col, meshes, materials, rigid_geoms: li
 
                 materials[texture.filename] = material
             obj.active_material = material
+            obj.matrix_world = [surface.l2w[i:i+4] for i in range(0, 16, 4)]
 
-        obj.matrix_world = [surface.l2w[i:i+4] for i in range(0, 16, 4)]
+            col.objects.link(obj)
 
-        col.objects.link(obj)
-        bpy.context.view_layer.objects.active = obj
         mesh_no += 1
 
 def export_surfaces(col, zone, meshes, materials, rigid_geoms: list[RigidGeom], zone_no, tex_dir):

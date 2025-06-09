@@ -32,7 +32,7 @@ class Mesh:
     name_offset: int
     name: str
     num_sub_meshes: int
-    idx_sum_mesh: int
+    idx_sub_mesh: int
     num_bones: int
     num_faces: int
     num_vertices: int
@@ -162,7 +162,7 @@ class Geom:
             mesh.bounding_box = inev_file.read_bounding_box()
             mesh.name_offset = inev_file.read_i16()
             mesh.num_sub_meshes = inev_file.read_i16()
-            mesh.idx_sum_mesh = inev_file.read_i16()
+            mesh.idx_sub_mesh = inev_file.read_i16()
             mesh.num_bones = inev_file.read_i16()
             mesh.num_faces = inev_file.read_i16()
             mesh.num_vertices = inev_file.read_i16()
