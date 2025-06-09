@@ -5,7 +5,8 @@ class Material:
     detail_scale: float
     fixed_alpha:float
     flags: int
-    numTextures: int
+    type: int
+    num_textures: int
     texture_index: int
 
     def __init__(self):
@@ -26,18 +27,36 @@ class Texture:
         self.filename_offset = 0
         self.desc_offset = 0
 
+class Mesh:
+    bounding_box: list[float]
+    name_offset: int
+    num_sub_meshes: int
+    idx_sum_mesh: int
+    num_bones: int
+    num_faces: int
+    num_vertices: int
+
+class SubMesh:
+    idx_dlist: int
+    idx_material: int
+    world_pixel_size: int
+
 class Geom:
     """ Base of rgidgeom or skingeom. """
 
     valid: bool
     textures: list[Texture]
     materials: list[Material]
+    meshes: list[Mesh]
+    sub_meshes: list[SubMesh]
     string_data: bytearray
 
     def __init__(self):
         self.valid = False
         self.bounding_box = [0.0] * 6
         self.textures = []
+        self.meshes = []
+        self.sub_meshes = []
         self.materials = []
 
     def read(self, bin_data):
@@ -85,14 +104,10 @@ class Geom:
         # inevFile.readArray(rigidBodies, numRigidBodies);
         inev_file.skip(4)
         
-        # inevFile.readArray(meshes, numMeshes);
-        inev_file.skip(4)
-        
-        # inevFile.readArray(subMeshes, numSubMeshes);
-        inev_file.skip(4)
-        
-        # inevFile.readArray(materials, numMaterials);
-        inev_file.skip(4)
+        self._read_meshes(inev_file)
+        self._read_submeshes(inev_file)
+        self._read_materials(inev_file)
+
         
         array_cursor = inev_file.resolve_pointer(self.num_textures)
         inev_file.push_cursor(array_cursor)
@@ -134,6 +149,53 @@ class Geom:
             tex.description = self.lookup_string(tex.desc_offset)
 
         self.valid = True
+
+    def _read_meshes(self, inev_file: InevFile):
+        array_cursor = inev_file.resolve_pointer(self.num_meshes)
+        inev_file.push_cursor(array_cursor)
+        for _ in range(self.num_meshes):
+            mesh = Mesh()
+            mesh.bounding_box = inev_file.read_bounding_box()
+            mesh.name_offset = inev_file.read_i16()
+            mesh.num_sub_meshes = inev_file.read_i16()
+            mesh.idx_sum_mesh = inev_file.read_i16()
+            mesh.num_bones = inev_file.read_i16()
+            mesh.num_faces = inev_file.read_i16()
+            mesh.num_vertices = inev_file.read_i16()
+            inev_file.skip(4)
+            self.meshes.append(mesh)
+            pass
+        inev_file.pop_cursor()
+
+    def _read_submeshes(self, inev_file: InevFile):
+        array_cursor = inev_file.resolve_pointer(self.num_sub_meshes)
+        inev_file.push_cursor(array_cursor)
+        for _ in range(self.num_sub_meshes):
+            submesh = SubMesh()
+            submesh.idx_dlist = inev_file.read_u16()
+            submesh.idx_material = inev_file.read_u16()
+            submesh.world_pixel_size = inev_file.read_float()
+
+            inev_file.skip(4)
+            self.sub_meshes.append(submesh)
+            pass
+        inev_file.pop_cursor()
+
+    def _read_materials(self, inev_file: InevFile):
+        array_cursor = inev_file.resolve_pointer(self.num_materials)
+        inev_file.push_cursor(array_cursor)
+        for _ in range(self.num_materials):
+            material = Material()
+            inev_file.skip(8)   # skip UV Anim
+            material.detail_scale = inev_file.read_float()
+            material.fixed_alpha = inev_file.read_float()
+            material.flags = inev_file.read_u16()
+            material.type = inev_file.read_byte()
+            material.num_textures = inev_file.read_byte()
+            material.texture_index = inev_file.read_byte()
+            inev_file.skip(3)
+            self.materials.append(material)
+        inev_file.pop_cursor()
 
     def lookup_string(self, offset):
         """ Lookup a string in the string data. """

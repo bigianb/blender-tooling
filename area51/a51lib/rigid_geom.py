@@ -73,7 +73,7 @@ class RigidGeom:
             indices_cursor = inev_file.resolve_pointer(num_indices)
             inev_file.push_cursor(indices_cursor)
             for _ in range(num_indices):
-                dl.indices.append(inev_file.read_ui16())
+                dl.indices.append(inev_file.read_u16())
             inev_file.pop_cursor()
 
             num_vertices = inev_file.read_int()

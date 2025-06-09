@@ -88,10 +88,20 @@ class InevFile:
         self.cursor += 2
         return struct.unpack_from('h', self.data, self.cursor - 2)[0]
     
-    def read_ui16(self):
+    def read_u16(self):
         """ Reads an unsigned 16 bit integer. """
         self.cursor += 2
         return struct.unpack_from('H', self.data, self.cursor - 2)[0]
+    
+    def read_byte(self):
+        """ Reads an unsigned 8 bit integer. """
+        self.cursor += 1
+        return struct.unpack_from('B', self.data, self.cursor - 1)[0]
+
+    def read_float(self):
+        """ Reads a float. """
+        self.cursor += 4
+        return struct.unpack_from('f', self.data, self.cursor - 4)[0]
     
     def read_bounding_box(self):
         """ consists of 2 vectors min, max. """

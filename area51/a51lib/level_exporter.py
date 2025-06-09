@@ -4,16 +4,18 @@ import os
 from .dfs import Dfs
 from .playsurface import Playsurface
 from .rigid_geom import RigidGeom
+from .geom import Geom
 
-def export_surfaces(col, zone, meshes, materials, rigid_geoms: list[RigidGeom], zone_no, tex_dir):
-    surf_no = 0
-    for surface in zone.surfaces:
-        geom = rigid_geoms[surface.geom_name]
 
-        if surface.geom_name in meshes:
-            mesh = meshes[surface.geom_name]
+def export_surface(surface, name_prefix, col, meshes, materials, rigid_geoms: list[RigidGeom], tex_dir):
+    geom = rigid_geoms[surface.geom_name]
+    mesh_no = 0
+    for geom_mesh in geom.geom.meshes:
+        key = surface.geom_name + geom_mesh.name
+        if key in meshes:
+            mesh = meshes[key]
         else:
-            mesh = bpy.data.meshes.new(surface.geom_name)
+            mesh = bpy.data.meshes.new(key)
 
             verts = []
             faces = []
@@ -47,7 +49,7 @@ def export_surfaces(col, zone, meshes, materials, rigid_geoms: list[RigidGeom], 
             uv_data = mesh.uv_layers.new()
             uv_data.data.foreach_set('uv', uvs)
                 
-        obj = bpy.data.objects.new('obj_z'+str(zone_no) + '_s'+str(surf_no), mesh)
+        obj = bpy.data.objects.new(name_prefix + '_' + str(mesh_no), mesh)
         
         if len(geom.geom.textures) > 0:
             # TODO: this is a hack. We should reference the materal used by the mesh.
@@ -84,6 +86,12 @@ def export_surfaces(col, zone, meshes, materials, rigid_geoms: list[RigidGeom], 
 
         col.objects.link(obj)
         bpy.context.view_layer.objects.active = obj
+        mesh_no += 1
+
+def export_surfaces(col, zone, meshes, materials, rigid_geoms: list[RigidGeom], zone_no, tex_dir):
+    surf_no = 0
+    for surface in zone.surfaces:
+        export_surface(surface, 'obj_z'+str(zone_no) + '_s'+str(surf_no), col, meshes, materials, rigid_geoms, tex_dir)
         surf_no += 1
 
 def export_level(game_root, level_name, export_dir, verbose=False):
@@ -122,8 +130,9 @@ def export_level(game_root, level_name, export_dir, verbose=False):
         geom = RigidGeom()
         geom.read(geom_data)
         if geom.is_valid():
-            print(f'\nread {gname}')
-            geom.describe()
+            if verbose:
+                print(f'\nread {gname}')
+                geom.describe()
             rigid_geoms[gname] = geom
         else:
             print(f'Failed to read {gname}')
