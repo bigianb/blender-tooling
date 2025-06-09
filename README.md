@@ -16,7 +16,7 @@ see https://docs.python.org/3/tutorial/venv.html
 ```
 python3.11 -m venv venv       
 source venv/bin/activate
-pip install bpy
+pip install -r requirements.txt
 ```
 
 Blender API: https://docs.blender.org/api/current/index.html

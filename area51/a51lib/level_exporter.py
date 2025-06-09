@@ -1,10 +1,11 @@
 import bpy
+import os
 
 from .dfs import Dfs
 from .playsurface import Playsurface
 from .rigid_geom import RigidGeom
 
-def export_surfaces(col, zone, meshes, rigid_geoms, zone_no):
+def export_surfaces(col, zone, meshes, materials, rigid_geoms: list[RigidGeom], zone_no, tex_dir):
     surf_no = 0
     for surface in zone.surfaces:
         geom = rigid_geoms[surface.geom_name]
@@ -45,19 +46,51 @@ def export_surfaces(col, zone, meshes, rigid_geoms, zone_no):
 
             uv_data = mesh.uv_layers.new()
             uv_data.data.foreach_set('uv', uvs)
+                
+        obj = bpy.data.objects.new('obj_z'+str(zone_no) + '_s'+str(surf_no), mesh)
+        
+        if len(geom.geom.textures) > 0:
+            # TODO: this is a hack. We should reference the materal used by the mesh.
+            # For materials we should use nodes to do it properly.
+            texture = geom.geom.textures[0]
+            if texture.filename in materials:
+                material = materials[texture.filename]
+            else:
+                # https://docs.blender.org/api/current/bpy.types.Material.html#bpy.types.Material
+                tex_basename = texture.filename.split('.')[0].upper()
+                img_path = os.path.join(tex_dir, tex_basename+".png")
+                img_path = os.path.abspath(img_path)
 
+                try:
+                    im = bpy.data.images.load(img_path, check_existing=True)
+                    im.name = tex_basename+".png"
+                except RuntimeError:
+                    im = bpy.data.images.new(tex_basename+".png", 128, 128)
+                    # allow the path to be resolved later
+                    im.filepath = img_path
+                    im.source = 'FILE'
 
-        obj = bpy.data.objects.new(
-            'obj_z'+str(zone_no) + '_s'+str(surf_no), mesh)
-        surf_no += 1
+                material = bpy.data.materials.new('Material_'+texture.filename)
+                material.use_nodes = True
+                teximage_node = material.node_tree.nodes.new("ShaderNodeTexImage")
+                teximage_node.image = im
+                bsdf_node = material.node_tree.nodes["Principled BSDF"]
+                material.node_tree.links.new(bsdf_node.inputs["Base Color"], teximage_node.outputs["Color"])
+
+                materials[texture.filename] = material
+            obj.active_material = material
+
         obj.matrix_world = [surface.l2w[i:i+4] for i in range(0, 16, 4)]
 
         col.objects.link(obj)
         bpy.context.view_layer.objects.active = obj
+        surf_no += 1
 
 def export_level(game_root, level_name, export_dir, verbose=False):
 
     bpy.ops.wm.read_factory_settings()
+
+    tex_dir = os.path.join(export_dir, "..", 'textures')
 
     level_dfs = Dfs()
     level_dfs.open(game_root+'/LEVELS/CAMPAIGN/'+level_name+'/LEVEL')
@@ -104,16 +137,17 @@ def export_level(game_root, level_name, export_dir, verbose=False):
         space.clip_end = 150000
 
     meshes = {}
+    materials = {}
     zone_no = 0
     for zone in playsurface.zones:
         col = bpy.data.collections.new("Zone "+str(zone_no))
         bpy.context.scene.collection.children.link(col)
-        export_surfaces(col, zone, meshes, rigid_geoms, zone_no)
+        export_surfaces(col, zone, meshes, materials, rigid_geoms, zone_no, tex_dir)
         zone_no += 1
     for zone in playsurface.portals:
         col = bpy.data.collections.new("Portal "+str(zone_no))
         bpy.context.scene.collection.children.link(col)
-        export_surfaces(col, zone, meshes, rigid_geoms, zone_no)
+        export_surfaces(col, zone, meshes, materials, rigid_geoms, zone_no, tex_dir)
         zone_no += 1
 
     # remove mesh Cube
