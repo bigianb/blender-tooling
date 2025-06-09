@@ -25,4 +25,8 @@ Blender API: https://docs.blender.org/api/current/index.html
 
 Set the environment variable `A51_GAME_DATA` to the root of the PC game data (the directory which contains the file BOOT.DFS)
 
+Running Dreamland in VSCode will create a blend file in export/levels.
+The exporter currently expects to find the textures in export/textures. Right now you need to use something like DFSViewer to populate this (just export all to that location) but eventually the python script will create them.
+
+
 
