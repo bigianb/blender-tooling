@@ -30,6 +30,7 @@ class Texture:
 class Mesh:
     bounding_box: list[float]
     name_offset: int
+    name: str
     num_sub_meshes: int
     idx_sum_mesh: int
     num_bones: int
@@ -147,6 +148,9 @@ class Geom:
         for tex in self.textures:
             tex.filename = self.lookup_string(tex.filename_offset)
             tex.description = self.lookup_string(tex.desc_offset)
+
+        for mesh in self.meshes:
+            mesh.name = self.lookup_string(mesh.name_offset)
 
         self.valid = True
 
