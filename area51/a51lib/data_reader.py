@@ -1,0 +1,79 @@
+import struct
+
+class DataReader:
+    """ Code to deal with reading binary data. """
+
+    def __init__(self, data, cursor = 0):
+        self.data = data
+        self.cursor_stack = []
+        self.cursor = cursor
+
+    def push_cursor(self, new_cursor):
+        self.cursor_stack.append(self.cursor)
+        self.cursor = new_cursor
+
+    def pop_cursor(self):
+        self.cursor = self.cursor_stack.pop()
+    
+    def skip(self, num):
+        """ skip num bytes. """
+        self.cursor += num
+
+    def align_16(self):
+        self.cursor = ((self.cursor + 0x0f) & ~0x0f)
+
+    def read_int(self):
+        """ Reads a 32 bit integer """
+        self.cursor += 4
+        return struct.unpack_from('i', self.data, self.cursor - 4)[0]
+
+    def read_u32(self):
+        """ Reads an unsigned 32 bit integer """
+        self.cursor += 4
+        return struct.unpack_from('I', self.data, self.cursor - 4)[0]
+    
+    def read_i16(self):
+        """ Reads a 16 bit integer. """
+        self.cursor += 2
+        return struct.unpack_from('h', self.data, self.cursor - 2)[0]
+    
+    def read_u16(self):
+        """ Reads an unsigned 16 bit integer. """
+        self.cursor += 2
+        return struct.unpack_from('H', self.data, self.cursor - 2)[0]
+    
+    def read_byte(self):
+        """ Reads an unsigned 8 bit integer. """
+        self.cursor += 1
+        return struct.unpack_from('B', self.data, self.cursor - 1)[0]
+
+    def read_float(self):
+        """ Reads a float. """
+        self.cursor += 4
+        return struct.unpack_from('f', self.data, self.cursor - 4)[0]
+    
+    def read_bounding_box(self):
+        """ consists of 2 vectors min, max. """
+       
+        bb = struct.unpack_from('ffffffff', self.data, self.cursor)
+        self.cursor += 4 * 4 * 2
+        return bb
+
+    def read_byte_array(self, count):
+        """ Reads a byte array of given count. """
+        start = self.cursor
+        self.cursor += count
+        return self.data[start:start+count]
+
+    def read_float_array(self, count):
+        """ Reads an array of floats. """
+        start = self.cursor
+        self.cursor += 4 * count
+        return struct.unpack_from(f'{count}f', self.data, start)
+    
+    def read_uint8_array(self, count):
+        """ Reads an array of unsigned 8 bit integers. """
+        start = self.cursor
+        self.cursor += count
+        return struct.unpack_from(f'{count}B', self.data, start)
+    

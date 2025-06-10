@@ -4,7 +4,7 @@ import os
 from .dfs import Dfs
 from .playsurface import Playsurface
 from .rigid_geom import RigidGeom
-from .geom import Geom
+from .level_bin import LevelBin
 
 
 def export_surface(surface, name_prefix, col, meshes, materials, rigid_geoms: list[RigidGeom], tex_dir):
@@ -93,36 +93,10 @@ def export_surfaces(col, zone, meshes, materials, rigid_geoms: list[RigidGeom], 
         export_surface(surface, 'obj_z'+str(zone_no) + '_s'+str(surf_no), col, meshes, materials, rigid_geoms, tex_dir)
         surf_no += 1
 
-def export_level(game_root, level_name, export_dir, verbose=False):
-
-    bpy.ops.wm.read_factory_settings()
-
-    tex_dir = os.path.join(export_dir, "..", 'textures')
-
-    level_dfs = Dfs()
-    level_dfs.open(game_root+'/LEVELS/CAMPAIGN/'+level_name+'/LEVEL')
-    if verbose:
-        print('\n\nLEVEL.DFS contents:\n')
-        level_dfs.list_files()
-
-        loadscript = level_dfs.get_file('LOADSCRIPT.TXT')
-        print(loadscript.decode('utf-8'))
-
-    playsurface = Playsurface()
-    playsurface.init(level_dfs.get_file('LEVEL_DATA.PLAYSURFACE'))
-    if verbose:
-        print('\n\nPlaysurface:\n')
-        playsurface.describe()
-
-    resource_dfs = Dfs()
-    resource_dfs.open(game_root+'/LEVELS/CAMPAIGN/'+level_name+'/RESOURCE')
-    if verbose:
-        print('\n\nRESOURCE.DFS contents:\n')
-        resource_dfs.list_files()
-
+def collect_rigid_geoms(geom_names: list[str], dfs: Dfs, verbose: bool):
     rigid_geoms = {}
-    for gname in playsurface.geoms:
-        geom_data = resource_dfs.get_file(gname)
+    for gname in geom_names:
+        geom_data = dfs.get_file(gname)
         if geom_data == None:
             print(f'Failed to find data for {gname}')
             continue
@@ -135,7 +109,37 @@ def export_level(game_root, level_name, export_dir, verbose=False):
             rigid_geoms[gname] = geom
         else:
             print(f'Failed to read {gname}')
+    return rigid_geoms
 
+def export_level(game_root, level_name, export_dir, verbose=False):
+
+    bpy.ops.wm.read_factory_settings()
+
+    tex_dir = os.path.join(export_dir, "..", 'textures')
+    level_path = os.path.join(game_root, 'LEVELS', 'CAMPAIGN', level_name)
+    level_dfs = Dfs()
+    level_dfs.open(os.path.join(level_path, '/LEVEL'))
+    if verbose:
+        print('\n\nLEVEL.DFS contents:\n')
+        level_dfs.list_files()
+
+    playsurface = Playsurface()
+    playsurface.init(level_dfs.get_file('LEVEL_DATA.PLAYSURFACE'))
+    if verbose:
+        print('\n\nPlaysurface:\n')
+        playsurface.describe()
+
+    level_bin = LevelBin()
+    level_bin.init(level_dfs.get_file('LEVEL_DATA.BIN_LEVEL'))
+
+    resource_dfs = Dfs()
+    resource_dfs.open(os.path.join(level_path, '/RESOURCE'))
+    if verbose:
+        print('\n\nRESOURCE.DFS contents:\n')
+        resource_dfs.list_files()
+
+    rigid_geoms = collect_rigid_geoms(playsurface.geoms, resource_dfs, verbose)
+    
     bpy.context.scene.unit_settings.system = 'NONE'
     screens = (s for w in bpy.data.workspaces for s in w.screens)
     V3Dareas = (a for s in screens for a in s.areas if a.type == 'VIEW_3D')
