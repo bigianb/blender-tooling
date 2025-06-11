@@ -6,25 +6,25 @@ class Bitstream:
         self.bitpos = bitpos
             
     def _read_raw(self, num_bits) -> int:
-        left_offset=self.bitpos & 7
+        leftOffset = self.bitpos & 7
+        rightOffset = (40 - leftOffset - num_bits)
+    
         byte_pos = self.bitpos >> 3
+        end_pos = ((self.bitpos + num_bits - 1) >> 3) + 1
+
         self.bitpos += num_bits
+        readMask = (0xFFFFFFFFFF >> leftOffset) & (0xFFFFFFFFFF << rightOffset)
+        dataMask = 0
 
-        num_bytes = (num_bits + 7) >> 3
-        if left_offset > 0:
-            num_bytes += 1
+        shift = 32
+        while byte_pos != end_pos:
+            b = struct.unpack_from('B', self.data, byte_pos)[0]
+            byte_pos += 1
+            dataMask |= (b << shift)
+            shift -= 8
 
-        mask = 0xFF >> left_offset
-        unshifted = struct.unpack_from(f'{num_bytes}B', self.data, byte_pos)
-        shifted = unshifted[0] & mask
-        for i in range(1, num_bytes-1):
-            shifted <<= 8
-            shifted |= unshifted[i]
-        # we now have left_offset bits that we need to get from unshifted[4]
-        if left_offset > 0:
-            shifted <<= left_offset
-            shifted |= (unshifted[num_bytes-1] >> (8 - left_offset))
-        return shifted
+        return (dataMask & readMask) >> rightOffset
+
 
     def read_float(self) -> float:
         raw = self._read_raw(32)

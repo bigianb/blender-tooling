@@ -1,0 +1,109 @@
+import unittest
+import struct
+from a51lib.bitstream import Bitstream
+
+class TestBitstream(unittest.TestCase):
+    def test_read_raw_simple_byte_aligned(self):
+        data = bytes([0b10101010])
+        bs = Bitstream(data)
+        self.assertEqual(bs._read_raw(8), 0b10101010)
+
+    def test_read_raw_partial_byte(self):
+        data = bytes([0b11001100])
+        bs = Bitstream(data)
+        self.assertEqual(bs._read_raw(4), 0b1100)
+        self.assertEqual(bs._read_raw(4), 0b1100)
+
+    def test_read_raw_cross_bytes(self):
+        data = bytes([0b11110000, 0b00001111])
+        bs = Bitstream(data)
+        # This test is ambiguous in the original, let's clarify:
+        # Reading 12 bits: 11110000 0000, next 4 bits from second byte: 0000
+        # Should be 0b111100000000 = 3840
+        self.assertEqual(bs._read_raw(12), 0b111100000000)
+
+    def test_read_raw_with_offset(self):
+        data = bytes([0b10101010, 0b11001100])
+        bs = Bitstream(data, bitpos=4)
+        self.assertEqual(bs._read_raw(8), ((0b1010 << 4) | (0b1100)))
+
+    def test_read_raw_multiple_bytes(self):
+        data = bytes([0x12, 0x34, 0x56, 0x78])
+        bs = Bitstream(data)
+        self.assertEqual(bs._read_raw(32), 0x12345678)
+
+    def test_read_raw_not_byte_aligned(self):
+        data = bytes([0b11110000, 0b10101010])
+        bs = Bitstream(data, bitpos=3)
+        self.assertEqual(bs._read_raw(10), 0b1000010101)
+
+    def test_read_bool(self):
+        data = bytes([0b10000000])
+        bs = Bitstream(data)
+        self.assertTrue(bs.read_bool())
+        bs = Bitstream(bytes([0b00000000]))
+        self.assertFalse(bs.read_bool())
+
+    def test_read_float(self):
+        # 0x3f800000 is 1.0 in IEEE 754
+        data = bytes([0x3f, 0x80, 0, 0])
+        bs = Bitstream(data)
+        self.assertAlmostEqual(bs.read_float(), 1.0)
+
+    def test_read_v2(self):
+        # Two floats: 1.0 and 2.0
+        data = struct.pack('>ff', 1.0, 2.0)
+        bs = Bitstream(data)
+        v = bs.read_v2()
+        self.assertAlmostEqual(v[0], 1.0)
+        self.assertAlmostEqual(v[1], 2.0)
+
+    def test_read_v3(self):
+        data = struct.pack('>fff', 1.0, 2.0, 3.0)
+        bs = Bitstream(data)
+        v = bs.read_v3()
+        self.assertAlmostEqual(v[0], 1.0)
+        self.assertAlmostEqual(v[1], 2.0)
+        self.assertAlmostEqual(v[2], 3.0)
+
+    def test_read_string_ascii(self):
+        # Length = 4, string = "abc", null terminator
+        data = bytes([4, ord('a'), ord('b'), ord('c'), 0])
+        bs = Bitstream(data)
+        self.assertEqual(bs.read_string(), "abc")
+
+    def test_read_string_empty(self):
+        data = bytes([1, 0])
+        bs = Bitstream(data)
+        self.assertEqual(bs.read_string(), "")
+
+    def test_read_string_with_nulls(self):
+        # Length = 5, string = "a\0b", null terminator
+        data = bytes([5, ord('a'), 0, ord('b'), 0, 0])
+        bs = Bitstream(data)
+        self.assertEqual(bs.read_string(), "ab")
+
+    def test_read_bounding_box(self):
+        data = bytes([0] * 24)
+        bs = Bitstream(data)
+        self.assertEqual(bs.read_bounding_box(), [0, 0, 0, 0, 0, 0])
+
+    def test_read_colour(self):
+        data = bytes([0, 0, 0, 0])
+        bs = Bitstream(data)
+        self.assertEqual(bs.read_colour(), 0)
+
+if __name__ == "__main__":
+    unittest.main()
+
+def test_read_raw_not_byte_aligned():
+    # 0b11110000 0b10101010 = 240, 170
+    data = bytes([0b11110000, 0b10101010])
+    bs = Bitstream(data, bitpos=3)
+    # Read 10 bits starting at bit 3: should get bits 3-12
+    # bits: 11110000 10101010
+    #        ^^^
+    #      01234567 89012345
+    #      34567890 12
+    # bits 3-12: 1000010101 = 0x205
+    assert bs._read_raw(10) == 0b1000010101
