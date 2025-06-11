@@ -15,7 +15,7 @@ class Dfs:
 
     is_valid = False
 
-    def open(self, base_filename):
+    def open(self, base_filename: str):
         """ filename does not include the extension """
         self.base_filename = base_filename
         with open(base_filename+'.DFS', 'rb') as dfsFile:
@@ -64,7 +64,7 @@ class Dfs:
             print(
                 f"{name:<48} start:{entry['data_offset']:>8},  length:{entry['data_length']:>8}")
 
-    def get_file(self, sub_filename):
+    def get_file(self, sub_filename: str) -> bytes | None:
         """ Get the data for a sub-file. Assumes that there is only one data file """
         target = sub_filename.casefold()
         for entry in self.file_entries:

@@ -118,7 +118,7 @@ def export_level(game_root, level_name, export_dir, verbose=False):
     tex_dir = os.path.join(export_dir, "..", 'textures')
     level_path = os.path.join(game_root, 'LEVELS', 'CAMPAIGN', level_name)
     level_dfs = Dfs()
-    level_dfs.open(os.path.join(level_path, '/LEVEL'))
+    level_dfs.open(os.path.join(level_path, 'LEVEL'))
     if verbose:
         print('\n\nLEVEL.DFS contents:\n')
         level_dfs.list_files()
@@ -130,10 +130,10 @@ def export_level(game_root, level_name, export_dir, verbose=False):
         playsurface.describe()
 
     level_bin = LevelBin()
-    level_bin.init(level_dfs.get_file('LEVEL_DATA.BIN_LEVEL'))
+    level_bin.init(level_dfs.get_file('LEVEL_DATA.BIN_LEVEL'), level_dfs.get_file('LEVEL_DATA.LEV_DICT'))
 
     resource_dfs = Dfs()
-    resource_dfs.open(os.path.join(level_path, '/RESOURCE'))
+    resource_dfs.open(os.path.join(level_path, 'RESOURCE'))
     if verbose:
         print('\n\nRESOURCE.DFS contents:\n')
         resource_dfs.list_files()

@@ -3,8 +3,13 @@ import struct
 class DataReader:
     """ Code to deal with reading binary data. """
 
+    cursor: int
+    data: bytes
+    len: int
+
     def __init__(self, data, cursor = 0):
         self.data = data
+        self.len = len(data)
         self.cursor_stack = []
         self.cursor = cursor
 
@@ -15,6 +20,9 @@ class DataReader:
     def pop_cursor(self):
         self.cursor = self.cursor_stack.pop()
     
+    def has_data(self)-> bool:
+        return self.cursor < self.len
+
     def skip(self, num):
         """ skip num bytes. """
         self.cursor += num
@@ -32,6 +40,11 @@ class DataReader:
         self.cursor += 4
         return struct.unpack_from('I', self.data, self.cursor - 4)[0]
     
+    def read_u64(self):
+        """ Reads an unsigned 64 bit integer """
+        self.cursor += 8
+        return struct.unpack_from('Q', self.data, self.cursor - 8)[0]
+    
     def read_i16(self):
         """ Reads a 16 bit integer. """
         self.cursor += 2
@@ -47,7 +60,7 @@ class DataReader:
         self.cursor += 1
         return struct.unpack_from('B', self.data, self.cursor - 1)[0]
 
-    def read_float(self):
+    def read_float(self) -> float:
         """ Reads a float. """
         self.cursor += 4
         return struct.unpack_from('f', self.data, self.cursor - 4)[0]
@@ -76,4 +89,13 @@ class DataReader:
         start = self.cursor
         self.cursor += count
         return struct.unpack_from(f'{count}B', self.data, start)
+    
+    def read_string(self) -> str:
+        output = ''
+        while self.has_data() and self.data[self.cursor] != 0:
+            output += chr(self.data[self.cursor])
+            self.cursor += 1
+        # step over null terminator
+        self.cursor += 1
+        return output
     
