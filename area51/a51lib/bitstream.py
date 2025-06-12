@@ -25,6 +25,31 @@ class Bitstream:
 
         return (dataMask & readMask) >> rightOffset
 
+    def _read_raw_bits(self, num_bits) -> bytearray:
+        byte_array = bytearray()
+        bits_left = num_bits
+        bit_buffer = 0
+        bits_in_buffer = 0
+        byte_offset = self.bitpos >> 3
+        bit_offset = self.bitpos & 7
+
+        while bits_left > 0:
+            bits_to_read = min(bits_left, 8 - bit_offset)
+            b = struct.unpack_from('B', self.data, byte_offset)[0]
+            bit_buffer |= (b & (~(-1 << bits_to_read))) << bits_in_buffer
+            bits_in_buffer += bits_to_read
+            byte_offset += 1
+            bit_offset = 0
+            while bits_in_buffer >= 8:
+                byte_array.append(bit_buffer & 0xFF)
+                bit_buffer >>= 8
+                bits_in_buffer -= 8
+            bits_left -= bits_to_read
+        if bits_in_buffer > 0:
+            byte_array.append(bit_buffer & 0xFF)
+
+        self.bitpos += num_bits
+        return byte_array
 
     def read_float(self) -> float:
         raw = self._read_raw(32)
@@ -62,11 +87,10 @@ class Bitstream:
         # This is wrong. The way the buffer has to be read is complex and bizarre.
         # a sequence 0x5c 0x52 starting at bit offset 6 will return 0x48 and not 0x14
         # as you may expect.
-        while len > 0:
-            c = self._read_raw(8)
-            if c != 0:
-                # len includes the null terminator
-                s += chr(c)
+        buf = self._read_raw_bits(len * 8)
+        for i in range(len-1):
+            c = buf[i]
+            s += chr(c)
             len -= 1
         
         return s
