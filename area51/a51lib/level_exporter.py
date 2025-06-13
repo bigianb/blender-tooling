@@ -1,6 +1,8 @@
 import bpy
 import os
 
+from .info_reader import InfoReader
+
 from .dfs import Dfs
 from .playsurface import Playsurface
 from .rigid_geom import RigidGeom
@@ -111,6 +113,11 @@ def collect_rigid_geoms(geom_names: list[str], dfs: Dfs, verbose: bool):
             print(f'Failed to read {gname}')
     return rigid_geoms
 
+def loadInfo(info_data):
+    lines = info_data.decode('utf-8').splitlines()
+    reader = InfoReader(lines)
+
+
 def export_level(game_root, level_name, export_dir, verbose=False):
 
     bpy.ops.wm.read_factory_settings()
@@ -131,6 +138,9 @@ def export_level(game_root, level_name, export_dir, verbose=False):
 
     level_bin = LevelBin()
     level_bin.init(level_dfs.get_file('LEVEL_DATA.BIN_LEVEL'), level_dfs.get_file('LEVEL_DATA.LEV_DICT'))
+
+    
+    loadInfo(level_dfs.get_file('LEVEL_DATA.INFO'))
 
     resource_dfs = Dfs()
     resource_dfs.open(os.path.join(level_path, 'RESOURCE'))
