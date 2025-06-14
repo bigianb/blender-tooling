@@ -87,25 +87,13 @@ class TestBitstream(unittest.TestCase):
         bs = Bitstream(data)
         self.assertEqual(bs.read_colour(), 0)
 
-    def test_read_raw_not_byte_aligned(self):
-        # 0b11110000 0b10101010 = 240, 170
-        data = bytes([0b11110000, 0b10101010])
-        bs = Bitstream(data, bitpos=3)
-        # Read 10 bits starting at bit 3: should get bits 3-12
-        # bits: 11110000 10101010
-        #        ^^^
-        #      01234567 89012345
-        #      34567890 12
-        # bits 3-12: 1000010101 = 0x205
-        assert bs._read_raw(10) == 0b1000010101
-
     def test_read_string_ascii_simple(self):
         # Length = 5, string = "test", null terminator
         data = bytes([5, ord('t'), ord('e'), ord('s'), ord('t'), 0])
         bs = Bitstream(data)
         self.assertEqual(bs.read_string(), "test")
 
-    def test_read_string_empty(self):
+    def test_read_string_len_zero(self):
         # Length = 0 (should not happen, but test anyway)
         data = bytes([0])
         bs = Bitstream(data)

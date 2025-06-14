@@ -50,13 +50,11 @@ class LevelBin:
         reader.skip(4)
         self.num_objects = reader.read_int()
         self.num_properties = reader.read_int()
-        bitstream_len = reader.read_int()
+        reader.read_int()   # bitstream length. We don't need it.
 
         self._read_objects(reader)
         self._read_properties(reader)
 
-        bs_data = bin_data[reader.cursor:]
-        lbs = len(bs_data)
         bitstream = Bitstream(bin_data, reader.cursor * 8)
         self._init_objects_from_bitstream(bitstream)
 
@@ -68,15 +66,15 @@ class LevelBin:
 
     def _init_objects_from_bitstream(self, bitstream: Bitstream):
         object_type_names = set()
-        for object in self.objects:
-            object_type_names.add(object.type_name)
-            object.properties = {}
-            start_idx = object.start_property_idx
-            end_idx = start_idx + object.num_properties
+        for obj in self.objects:
+            object_type_names.add(obj.type_name)
+            obj.properties = {}
+            start_idx = obj.start_property_idx
+            end_idx = start_idx + obj.num_properties
 
             for prop_idx in range(start_idx, end_idx):
                 prop = self.properties[prop_idx]
-                self._add_prop(object.properties, prop, bitstream)
+                self._add_prop(obj.properties, prop, bitstream)
         print("Found the following object types\n" + str(object_type_names))
 
     def _add_prop(self, properties: dict, prop: LevelProperty, bitstream: Bitstream):
@@ -87,7 +85,7 @@ class LevelBin:
                 pval = bitstream.read_float()
                 properties[prop.name] = pval
             case PropertyType.INT:
-                ipval = bitstream.read_s32()
+                pval = bitstream.read_s32()
             case PropertyType.BOOL:
                 pval = bitstream.read_bool()
             case PropertyType.VECTOR2:
@@ -123,7 +121,7 @@ class LevelBin:
 
     def _read_objects(self, reader: DataReader):
         self.objects = []
-        for i in range(0, self.num_objects):
+        for _ in range(0, self.num_objects):
             obj = LevelObject()
             obj.type_index = reader.read_i16()
             obj.type_name = self.dictionary[obj.type_index]
@@ -134,7 +132,7 @@ class LevelBin:
 
     def _read_properties(self, reader: DataReader):
         self.properties = []
-        for i in range(0, self.num_properties):
+        for _ in range(0, self.num_properties):
             prop = LevelProperty()
             prop.type_index = reader.read_u16()
             prop.name_index = reader.read_u16()

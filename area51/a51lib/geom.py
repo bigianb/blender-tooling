@@ -168,7 +168,7 @@ class Geom:
             mesh.num_vertices = inev_file.read_i16()
             inev_file.skip(4)
             self.meshes.append(mesh)
-            pass
+            
         inev_file.pop_cursor()
 
     def _read_submeshes(self, inev_file: InevFile):

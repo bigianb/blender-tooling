@@ -82,15 +82,15 @@ class Bitstream:
         return 0
     
     def read_string(self) -> str:
-        len = self._read_raw(8)
+        string_len = self._read_raw(8)
         s = ''
         # This is wrong. The way the buffer has to be read is complex and bizarre.
         # a sequence 0x5c 0x52 starting at bit offset 6 will return 0x48 and not 0x14
         # as you may expect.
-        buf = self._read_raw_bits(len * 8)
-        for i in range(len-1):
+        buf = self._read_raw_bits(string_len * 8)
+        for i in range(string_len-1):
             c = buf[i]
             s += chr(c)
-            len -= 1
+            string_len -= 1
         
         return s
