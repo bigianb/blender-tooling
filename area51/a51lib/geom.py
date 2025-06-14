@@ -108,18 +108,8 @@ class Geom:
         self._read_meshes(inev_file)
         self._read_submeshes(inev_file)
         self._read_materials(inev_file)
-
-        
-        array_cursor = inev_file.resolve_pointer(self.num_textures)
-        inev_file.push_cursor(array_cursor)
-        for _ in range(self.num_textures):
-            tex = Texture()
-            tex.desc_offset = inev_file.read_i16()
-            tex.filename_offset = inev_file.read_i16()
-
-            self.textures.append(tex)
-        inev_file.pop_cursor()
-        
+        self._read_textures(inev_file)
+                
         # inevFile.readArray(uvKeys, numUVKeys);
         inev_file.skip(4)
         
@@ -171,6 +161,17 @@ class Geom:
             
         inev_file.pop_cursor()
 
+    def _read_textures(self, inev_file: InevFile):
+        array_cursor = inev_file.resolve_pointer(self.num_textures)
+        inev_file.push_cursor(array_cursor)
+        for _ in range(self.num_textures):
+            tex = Texture()
+            tex.desc_offset = inev_file.read_i16()
+            tex.filename_offset = inev_file.read_i16()
+
+            self.textures.append(tex)
+        inev_file.pop_cursor()
+
     def _read_submeshes(self, inev_file: InevFile):
         array_cursor = inev_file.resolve_pointer(self.num_sub_meshes)
         inev_file.push_cursor(array_cursor)
@@ -182,7 +183,7 @@ class Geom:
 
             inev_file.skip(4)
             self.sub_meshes.append(submesh)
-            pass
+
         inev_file.pop_cursor()
 
     def _read_materials(self, inev_file: InevFile):

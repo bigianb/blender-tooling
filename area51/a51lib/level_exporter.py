@@ -8,6 +8,30 @@ from .playsurface import Playsurface
 from .rigid_geom import RigidGeom
 from .level_bin import LevelBin
 
+def dlist_to_verts_faces(dlist):
+    verts = []
+    faces = []
+    uvs = []
+    
+    for v in dlist.vertices:
+        pos = v.position
+        verts.append((pos[0], pos[1], pos[2]))
+    for i in range(0, len(dlist.indices), 3):
+        vidx1 = dlist.indices[i]
+        vidx2 = dlist.indices[i+1]
+        vidx3 = dlist.indices[i+2]
+        faces.append((vidx1, vidx2, vidx3))
+        
+        vertex = dlist.vertices[vidx1]
+        uvs.append(vertex.uv[0])
+        uvs.append(vertex.uv[1])
+        vertex = dlist.vertices[vidx2]
+        uvs.append(vertex.uv[0])
+        uvs.append(vertex.uv[1])
+        vertex = dlist.vertices[vidx3]
+        uvs.append(vertex.uv[0])
+        uvs.append(vertex.uv[1])
+    return verts, faces, uvs
 
 def export_surface(surface, name_prefix, col, meshes, materials, rigid_geoms: list[RigidGeom], tex_dir):
     geom = rigid_geoms[surface.geom_name]
@@ -20,32 +44,9 @@ def export_surface(surface, name_prefix, col, meshes, materials, rigid_geoms: li
                 mesh = meshes[key]
             else:
                 mesh = bpy.data.meshes.new(key)
-
-                verts = []
-                faces = []
-                uvs = []
                 
                 dlist = geom.dlists[submesh.idx_dlist]
-                
-                for v in dlist.vertices:
-                    pos = v.position
-                    verts.append((pos[0], pos[1], pos[2]))
-                for i in range(0, len(dlist.indices), 3):
-                    vidx1 = dlist.indices[i]
-                    vidx2 = dlist.indices[i+1]
-                    vidx3 = dlist.indices[i+2]
-                    faces.append((vidx1, vidx2, vidx3))
-                    
-                    vertex = dlist.vertices[vidx1]
-                    uvs.append(vertex.uv[0])
-                    uvs.append(vertex.uv[1])
-                    vertex = dlist.vertices[vidx2]
-                    uvs.append(vertex.uv[0])
-                    uvs.append(vertex.uv[1])
-                    vertex = dlist.vertices[vidx3]
-                    uvs.append(vertex.uv[0])
-                    uvs.append(vertex.uv[1])
-                    
+                verts, faces, uvs = dlist_to_verts_faces(dlist)    
 
                 mesh.from_pydata(verts, [], faces)
                 meshes[key] = mesh
