@@ -117,7 +117,13 @@ def collect_rigid_geoms(geom_names: list[str], dfs: Dfs, verbose: bool):
 def loadInfo(info_data):
     lines = info_data.decode('utf-8').splitlines()
     reader = InfoReader(lines)
-
+    while header := reader.read_header():
+        if header.type == 'PlayerInfo':
+            pass
+        elif header.type == 'Info':
+            pass
+        else:
+            print(f"Unknown header type: {header.type}")
 
 def export_level(game_root, level_name, export_dir, verbose=False):
 
