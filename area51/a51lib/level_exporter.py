@@ -1,6 +1,8 @@
 import bpy
 import os
 
+from .blender_utils import remove_mesh, set_clips
+
 from .info_reader import InfoReader
 
 from .dfs import Dfs
@@ -119,11 +121,19 @@ def loadInfo(info_data):
     reader = InfoReader(lines)
     while header := reader.read_header():
         if header.type == 'PlayerInfo':
-            pass
+            # Position, Pitch, Yaw
+            pos = header.fields[0]['Position']
+            pitch = header.fields[0]['Pitch']
+            yaw = header.fields[0]['Yaw']
+
         elif header.type == 'Info':
             pass
         else:
             print(f"Unknown header type: {header.type}")
+    return pos, pitch, yaw
+
+# caulk
+# cap max z of object obj_z0_s2_0_3
 
 def export_level(game_root, level_name, export_dir, verbose=False):
 
@@ -146,8 +156,16 @@ def export_level(game_root, level_name, export_dir, verbose=False):
     level_bin = LevelBin()
     level_bin.init(level_dfs.get_file('LEVEL_DATA.BIN_LEVEL'), level_dfs.get_file('LEVEL_DATA.LEV_DICT'))
 
-    
-    loadInfo(level_dfs.get_file('LEVEL_DATA.INFO'))
+
+    start_pos, start_pitch, start_yaw = loadInfo(level_dfs.get_file('LEVEL_DATA.INFO'))
+
+    col = bpy.data.collections.new("Entities")
+    bpy.context.scene.collection.children.link(col)
+    obj = bpy.data.objects.new("info_player_spawn_0", None)
+    obj["classname"] = "info_player_spawn"
+    obj.location = (start_pos[0], start_pos[1] + 32, start_pos[2])
+    obj.rotation_euler = (start_pitch, 0, start_yaw)
+    col.objects.link(obj)
 
     resource_dfs = Dfs()
     resource_dfs.open(os.path.join(level_path, 'RESOURCE'))
@@ -157,33 +175,25 @@ def export_level(game_root, level_name, export_dir, verbose=False):
 
     rigid_geoms = collect_rigid_geoms(playsurface.geoms, resource_dfs, verbose)
     
-    bpy.context.scene.unit_settings.system = 'NONE'
-    screens = (s for w in bpy.data.workspaces for s in w.screens)
-    V3Dareas = (a for s in screens for a in s.areas if a.type == 'VIEW_3D')
-    V3Dspaces = (s for a in V3Dareas for s in a.spaces if s.type == 'VIEW_3D')
-    for space in V3Dspaces:
-        space.clip_start = 10
-        space.clip_end = 150000
+    set_clips(10, 150000)
 
+    static_geom_collection = bpy.data.collections.new("Static Geometry")
+    bpy.context.scene.collection.children.link(static_geom_collection)
     meshes = {}
     materials = {}
     zone_no = 0
     for zone in playsurface.zones:
         col = bpy.data.collections.new("Zone "+str(zone_no))
-        bpy.context.scene.collection.children.link(col)
+        static_geom_collection.children.link(col)
         export_surfaces(col, zone, meshes, materials, rigid_geoms, zone_no, tex_dir)
         zone_no += 1
     for zone in playsurface.portals:
         col = bpy.data.collections.new("Portal "+str(zone_no))
-        bpy.context.scene.collection.children.link(col)
+        static_geom_collection.children.link(col)
         export_surfaces(col, zone, meshes, materials, rigid_geoms, zone_no, tex_dir)
         zone_no += 1
 
-    # remove mesh Cube
-    if "Cube" in bpy.data.meshes:
-        mesh = bpy.data.meshes["Cube"]
-        print("removing mesh", mesh)
-        bpy.data.meshes.remove(mesh)
+    remove_mesh("Cube")
 
     bpy.ops.wm.save_as_mainfile(
         filepath=export_dir+'/'+level_name+'.blend', check_existing=False)
