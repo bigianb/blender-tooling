@@ -72,18 +72,25 @@ class LevelBin:
             start_idx = obj.start_property_idx
             end_idx = start_idx + obj.num_properties
 
+            verbose = False
+            # uncomment any types you want to log the properties of
+            #
+            # Invisible Wall objects are windows
+            #verbose |= obj.type_name == 'Invisible Wall'
+            #verbose |= obj.type_name == 'Anim Surface'
+            verbose |= obj.type_name == 'Door'
+
             for prop_idx in range(start_idx, end_idx):
                 prop = self.properties[prop_idx]
-                self._add_prop(obj.properties, prop, bitstream)
+                self._add_prop(obj.properties, prop, bitstream, verbose)
         print("Found the following object types\n" + str(object_type_names))
 
-    def _add_prop(self, properties: dict, prop: LevelProperty, bitstream: Bitstream):
+    def _add_prop(self, properties: dict, prop: LevelProperty, bitstream: Bitstream, verbose: bool):
         clean_type = prop.type_index & 0xFF
         pval =0
         match clean_type:
             case PropertyType.FLOAT:
                 pval = bitstream.read_float()
-                properties[prop.name] = pval
             case PropertyType.INT:
                 pval = bitstream.read_s32()
             case PropertyType.BOOL:
@@ -112,11 +119,11 @@ class LevelBin:
                 pval = bitstream.read_string()
             case PropertyType.FILENAME:
                 pval = bitstream.read_string()
-
             case _:
                 raise RuntimeError("Uknown property type: " + str(clean_type))
-            
-        print(prop.name + ' = ' + str(pval))
+        properties[prop.name] = pval
+        if verbose:
+            print(prop.name + ' = ' + str(pval))
 
 
     def _read_objects(self, reader: DataReader):

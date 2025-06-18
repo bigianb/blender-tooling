@@ -8,7 +8,7 @@ from .info_reader import InfoReader
 from .dfs import Dfs
 from .playsurface import Playsurface
 from .rigid_geom import RigidGeom
-from .level_bin import LevelBin
+from .level_bin import LevelBin, LevelObject
 
 def dlist_to_verts_faces(dlist):
     verts = []
@@ -35,13 +35,35 @@ def dlist_to_verts_faces(dlist):
         uvs.append(vertex.uv[1])
     return verts, faces, uvs
 
-def export_surface(surface, name_prefix, col, meshes, materials, rigid_geoms: list[RigidGeom], tex_dir):
-    geom = rigid_geoms[surface.geom_name]
+def add_door(obj: LevelObject, door_collection, door_idx, dfs, geoms, meshes, materials, tex_dir):
+    # Example Door properties:
+    #
+    # Base\Position = [-1700.0, 0.0, -3150.0]
+    # Base\Rotation = [0.0, 1.5707964897155762, 0.0]
+    # RenderInst\File = AH_HangarDoor_4x4m_000_bindpose.rigidgeom
+    # Door\Initial State = CLOSED
+    # Door\Resting State = CLOSED
+    geom_name = obj.properties['RenderInst\\File']
+    pos = obj.properties['Base\\Position']
+    rot = obj.properties['Base\\Rotation']
+    geom = find_rigid_geom(geom_name, dfs, geoms)
+    export_geom(geom, geom_name, None, pos, rot, door_collection, meshes, materials, 'door'+str(door_idx), tex_dir)
+
+def add_doors(level_bin: LevelBin, dfs, geoms, meshes, materials, tex_dir):
+    door_collection = bpy.data.collections.new("Doors")
+    bpy.context.scene.collection.children.link(door_collection)
+    door_idx = 1
+    for obj in level_bin.objects:
+        if obj.type_name == 'Door':
+            add_door(obj, door_collection, door_idx, dfs, geoms, meshes, materials, tex_dir)
+            door_idx += 1
+
+def export_geom(geom: RigidGeom, geom_name: str, l2w: list[float], pos, rot, col, meshes, materials, name_prefix: str, tex_dir: str):
     mesh_no = 0
     for geom_mesh in geom.geom.meshes:
         for submesh_idx in range (geom_mesh.idx_sub_mesh, geom_mesh.idx_sub_mesh + geom_mesh.num_sub_meshes):
             submesh = geom.geom.sub_meshes[submesh_idx]
-            key = surface.geom_name + '_' + geom_mesh.name + '_' + str(submesh_idx)
+            key = geom_name + '_' + geom_mesh.name + '_' + str(submesh_idx)
             if key in meshes:
                 mesh = meshes[key]
             else:
@@ -86,34 +108,45 @@ def export_surface(surface, name_prefix, col, meshes, materials, rigid_geoms: li
 
                 materials[texture.filename] = material
             obj.active_material = material
-            obj.matrix_world = [surface.l2w[i:i+4] for i in range(0, 16, 4)]
+            if l2w:
+                obj.matrix_world = [l2w[i:i+4] for i in range(0, 16, 4)]
+            if pos:
+                obj.location = (pos[0], pos[1], pos[2])
+            if rot:
+                obj.rotation_euler = (rot[0], rot[1], rot[2])
 
             col.objects.link(obj)
 
         mesh_no += 1
 
+def export_surface(surface, name_prefix, col, meshes, materials, rigid_geoms: list[RigidGeom], tex_dir):
+    geom = rigid_geoms[surface.geom_name]
+    export_geom(geom, surface.geom_name, surface.l2w, None, None, col, meshes, materials, name_prefix, tex_dir)
+    
 def export_surfaces(col, zone, meshes, materials, rigid_geoms: list[RigidGeom], zone_no, tex_dir):
     surf_no = 0
     for surface in zone.surfaces:
         export_surface(surface, 'obj_z'+str(zone_no) + '_s'+str(surf_no), col, meshes, materials, rigid_geoms, tex_dir)
         surf_no += 1
 
-def collect_rigid_geoms(geom_names: list[str], dfs: Dfs, verbose: bool):
-    rigid_geoms = {}
-    for gname in geom_names:
-        geom_data = dfs.get_file(gname)
+def find_rigid_geom(geom_name: str, dfs: Dfs, geom_repo: dict[str, RigidGeom]) -> RigidGeom:
+    if geom_name not in geom_repo:
+        geom_data = dfs.get_file(geom_name)
         if geom_data == None:
-            print(f'Failed to find data for {gname}')
-            continue
+            print(f'Failed to find data for {geom_name}')
+            return None
         geom = RigidGeom()
         geom.read(geom_data)
         if geom.is_valid():
-            if verbose:
-                print(f'\nread {gname}')
-                geom.describe()
-            rigid_geoms[gname] = geom
+            geom_repo[geom_name] = geom
         else:
-            print(f'Failed to read {gname}')
+            print(f'Failed to read {geom_name}')
+    return geom_repo[geom_name]
+
+def collect_rigid_geoms(geom_names: list[str], dfs: Dfs) -> dict[str, RigidGeom]:
+    rigid_geoms = {}
+    for geom_name in geom_names:
+        find_rigid_geom(geom_name, dfs, rigid_geoms)
     return rigid_geoms
 
 def loadInfo(info_data):
@@ -132,10 +165,26 @@ def loadInfo(info_data):
             print(f"Unknown header type: {header.type}")
     return pos, pitch, yaw
 
-# caulk
-# cap max z of object obj_z0_s2_0_3
+def create_bbox_mesh(bbox: list[float]):
+    verts = []
+    faces = []
 
-def export_level(game_root, level_name, export_dir, verbose=False):
+    min_x = bbox[0]
+    min_y = bbox[1]
+    min_z = bbox[2]
+    max_x = bbox[3]
+    max_y = bbox[4]
+    max_z = bbox[5]
+
+    if (min_z == max_z):
+        verts = [[min_x, min_y, min_z], [max_x, min_y, min_z], [min_x, max_y, min_z], [max_x, max_y, min_z]]
+        faces = [(0, 1, 2), (1, 3, 2)]
+    else:
+        raise ValueError("Bounding Box configuration not yet supported")
+
+    return verts, faces
+
+def export_level(game_root: str, level_name: str, export_dir: str, caulk: list[list[float]], verbose=False):
 
     bpy.ops.wm.read_factory_settings()
 
@@ -173,7 +222,7 @@ def export_level(game_root, level_name, export_dir, verbose=False):
         print('\n\nRESOURCE.DFS contents:\n')
         resource_dfs.list_files()
 
-    rigid_geoms = collect_rigid_geoms(playsurface.geoms, resource_dfs, verbose)
+    rigid_geoms = collect_rigid_geoms(playsurface.geoms, resource_dfs)
     
     set_clips(10, 150000)
 
@@ -195,7 +244,20 @@ def export_level(game_root, level_name, export_dir, verbose=False):
 
     remove_mesh("Cube")
 
-    # TODO: caulk y 0 -> 300, x -1930 -> -1470 z -1535
+    add_doors(level_bin, resource_dfs, rigid_geoms, meshes, materials, tex_dir)
+
+    if len(caulk) > 0:
+        # material textures/common/caulk
+        caulk_material = bpy.data.materials.new('textures/common/caulk')
+        caulk_collection = bpy.data.collections.new("Caulk")
+        bpy.context.scene.collection.children.link(caulk_collection)
+        for caulk_idx in range(0, len(caulk)):
+            mesh = bpy.data.meshes.new("caulk_"+str(caulk_idx))
+            verts, faces = create_bbox_mesh(caulk[caulk_idx])
+            mesh.from_pydata(verts, [], faces)
+            obj = bpy.data.objects.new("caulk_"+str(caulk_idx), mesh)
+            obj.active_material = caulk_material
+            caulk_collection.objects.link(obj)
 
     # Select all objects and scale them by 0.1 to better match doom3 scale
     #bpy.ops.object.select_all(action='SELECT')
