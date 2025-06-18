@@ -163,7 +163,7 @@ def export_level(game_root, level_name, export_dir, verbose=False):
     bpy.context.scene.collection.children.link(col)
     obj = bpy.data.objects.new("info_player_spawn_0", None)
     obj["classname"] = "info_player_spawn"
-    obj.location = (start_pos[0], start_pos[1] + 32, start_pos[2])
+    obj.location = (start_pos[0], start_pos[1] + 320, start_pos[2])
     obj.rotation_euler = (start_pitch, 0, start_yaw)
     col.objects.link(obj)
 
@@ -194,6 +194,16 @@ def export_level(game_root, level_name, export_dir, verbose=False):
         zone_no += 1
 
     remove_mesh("Cube")
+
+    # TODO: caulk y 0 -> 300, x -1930 -> -1470 z -1535
+
+    # Select all objects and scale them by 0.1 to better match doom3 scale
+    #bpy.ops.object.select_all(action='SELECT')
+    #bpy.ops.transform.resize(value=(0.1, 0.1, 0.1))
+
+    # rotate from y-up to z-up
+    #bpy.ops.transform.rotate(value=-1.5708, orient_axis='X')
+    #bpy.ops.object.select_all(action='DESELECT')
 
     bpy.ops.wm.save_as_mainfile(
         filepath=export_dir+'/'+level_name+'.blend', check_existing=False)
