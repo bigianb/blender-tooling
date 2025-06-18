@@ -3,8 +3,13 @@ import os
 from a51lib.level_exporter import export_level
 
 game_root = os.environ.get('A51_GAME_DATA', '/Users/ian/a51/pc/resources/app/game')
+doom_root = os.environ.get('A51_DOOM_DATA', '/Users/ian/doom/RBDOOM-3-BFG/base')
 
-os.makedirs('./export/levels', exist_ok=True)
+sub_path = 'a51'
+maps_path = os.path.join(doom_root, 'maps', sub_path)
+textures_path = os.path.join(doom_root, 'textures', sub_path)
+
+os.makedirs(maps_path, exist_ok=True)
 
 dreamland_caulk = [
     # min_x, min_y, min_z, max_x, max_y, max_z
@@ -18,5 +23,5 @@ dreamland_caulk = [
 # max z = -9279
 # y = 200
 
-export_level(game_root, 'DREAMLND', './export/levels', dreamland_caulk, verbose=False)
+export_level(game_root, 'DREAMLND', doom_root, sub_path, dreamland_caulk, verbose=False)
 #export_level(game_root, 'CAVES', './export/levels')

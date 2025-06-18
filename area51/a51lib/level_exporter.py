@@ -35,7 +35,7 @@ def dlist_to_verts_faces(dlist):
         uvs.append(vertex.uv[1])
     return verts, faces, uvs
 
-def add_door(obj: LevelObject, door_collection, door_idx, dfs, geoms, meshes, materials, tex_dir):
+def add_door(obj: LevelObject, door_collection, door_idx, dfs, geoms, meshes, materials, tex_dir, tex_prefix):
     # Example Door properties:
     #
     # Base\Position = [-1700.0, 0.0, -3150.0]
@@ -47,18 +47,18 @@ def add_door(obj: LevelObject, door_collection, door_idx, dfs, geoms, meshes, ma
     pos = obj.properties['Base\\Position']
     rot = obj.properties['Base\\Rotation']
     geom = find_rigid_geom(geom_name, dfs, geoms)
-    export_geom(geom, geom_name, None, pos, rot, door_collection, meshes, materials, 'door'+str(door_idx), tex_dir)
+    export_geom(geom, geom_name, None, pos, rot, door_collection, meshes, materials, 'door'+str(door_idx), tex_dir, tex_prefix)
 
-def add_doors(level_bin: LevelBin, dfs, geoms, meshes, materials, tex_dir):
+def add_doors(level_bin: LevelBin, dfs, geoms, meshes, materials, tex_dir, tex_prefix):
     door_collection = bpy.data.collections.new("Doors")
     bpy.context.scene.collection.children.link(door_collection)
     door_idx = 1
     for obj in level_bin.objects:
         if obj.type_name == 'Door':
-            add_door(obj, door_collection, door_idx, dfs, geoms, meshes, materials, tex_dir)
+            add_door(obj, door_collection, door_idx, dfs, geoms, meshes, materials, tex_dir, tex_prefix)
             door_idx += 1
 
-def export_geom(geom: RigidGeom, geom_name: str, l2w: list[float], pos, rot, col, meshes, materials, name_prefix: str, tex_dir: str):
+def export_geom(geom: RigidGeom, geom_name: str, l2w: list[float], pos, rot, col, meshes, materials, name_prefix: str, tex_dir: str, tex_prefix: str):
     mesh_no = 0
     for geom_mesh in geom.geom.meshes:
         for submesh_idx in range (geom_mesh.idx_sub_mesh, geom_mesh.idx_sub_mesh + geom_mesh.num_sub_meshes):
@@ -99,7 +99,7 @@ def export_geom(geom: RigidGeom, geom_name: str, l2w: list[float], pos, rot, col
                     im.filepath = img_path
                     im.source = 'FILE'
 
-                material = bpy.data.materials.new('Material_'+texture.filename)
+                material = bpy.data.materials.new(tex_prefix+tex_basename)
                 material.use_nodes = True
                 teximage_node = material.node_tree.nodes.new("ShaderNodeTexImage")
                 teximage_node.image = im
@@ -119,14 +119,14 @@ def export_geom(geom: RigidGeom, geom_name: str, l2w: list[float], pos, rot, col
 
         mesh_no += 1
 
-def export_surface(surface, name_prefix, col, meshes, materials, rigid_geoms: list[RigidGeom], tex_dir):
+def export_surface(surface, name_prefix, col, meshes, materials, rigid_geoms: list[RigidGeom], tex_dir, tex_prefix):
     geom = rigid_geoms[surface.geom_name]
-    export_geom(geom, surface.geom_name, surface.l2w, None, None, col, meshes, materials, name_prefix, tex_dir)
+    export_geom(geom, surface.geom_name, surface.l2w, None, None, col, meshes, materials, name_prefix, tex_dir, tex_prefix)
     
-def export_surfaces(col, zone, meshes, materials, rigid_geoms: list[RigidGeom], zone_no, tex_dir):
+def export_surfaces(col, zone, meshes, materials, rigid_geoms: list[RigidGeom], zone_no, tex_dir, tex_prefix):
     surf_no = 0
     for surface in zone.surfaces:
-        export_surface(surface, 'obj_z'+str(zone_no) + '_s'+str(surf_no), col, meshes, materials, rigid_geoms, tex_dir)
+        export_surface(surface, 'obj_z'+str(zone_no) + '_s'+str(surf_no), col, meshes, materials, rigid_geoms, tex_dir, tex_prefix)
         surf_no += 1
 
 def find_rigid_geom(geom_name: str, dfs: Dfs, geom_repo: dict[str, RigidGeom]) -> RigidGeom:
@@ -187,11 +187,13 @@ def create_bbox_mesh(bbox: list[float]):
 
     return verts, faces
 
-def export_level(game_root: str, level_name: str, export_dir: str, caulk: list[list[float]], verbose=False):
+def export_level(game_root: str, level_name: str, doom_root: str, mod_name: str, caulk: list[list[float]], verbose=False):
 
     bpy.ops.wm.read_factory_settings()
 
-    tex_dir = os.path.join(export_dir, "..", 'textures')
+    tex_prefix = 'textures/' + mod_name + '/'
+    tex_dir = os.path.join(doom_root, 'textures', mod_name)
+    blend_dir = os.path.join(doom_root, 'maps', mod_name)
     level_path = os.path.join(game_root, 'LEVELS', 'CAMPAIGN', level_name)
     level_dfs = Dfs()
     level_dfs.open(os.path.join(level_path, 'LEVEL'))
@@ -219,6 +221,10 @@ def export_level(game_root: str, level_name: str, export_dir: str, caulk: list[l
     obj.rotation_euler = (start_pitch, 0, start_yaw)
     col.objects.link(obj)
 
+    obj = bpy.data.objects.new("worldspawn", None)
+    obj["classname"] = "worldspawn"
+    col.objects.link(obj)
+
     resource_dfs = Dfs()
     resource_dfs.open(os.path.join(level_path, 'RESOURCE'))
     if verbose:
@@ -237,17 +243,17 @@ def export_level(game_root: str, level_name: str, export_dir: str, caulk: list[l
     for zone in playsurface.zones:
         col = bpy.data.collections.new("Zone "+str(zone_no))
         static_geom_collection.children.link(col)
-        export_surfaces(col, zone, meshes, materials, rigid_geoms, zone_no, tex_dir)
+        export_surfaces(col, zone, meshes, materials, rigid_geoms, zone_no, tex_dir, tex_prefix)
         zone_no += 1
     for zone in playsurface.portals:
         col = bpy.data.collections.new("Portal "+str(zone_no))
         static_geom_collection.children.link(col)
-        export_surfaces(col, zone, meshes, materials, rigid_geoms, zone_no, tex_dir)
+        export_surfaces(col, zone, meshes, materials, rigid_geoms, zone_no, tex_dir, tex_prefix)
         zone_no += 1
 
     remove_mesh("Cube")
 
-    add_doors(level_bin, resource_dfs, rigid_geoms, meshes, materials, tex_dir)
+    add_doors(level_bin, resource_dfs, rigid_geoms, meshes, materials, tex_dir, tex_prefix)
 
     if len(caulk) > 0:
         # material textures/common/caulk
@@ -271,4 +277,4 @@ def export_level(game_root: str, level_name: str, export_dir: str, caulk: list[l
     #bpy.ops.object.select_all(action='DESELECT')
 
     bpy.ops.wm.save_as_mainfile(
-        filepath=export_dir+'/'+level_name+'.blend', check_existing=False)
+        filepath=blend_dir+'/'+level_name+'.blend', check_existing=False)
