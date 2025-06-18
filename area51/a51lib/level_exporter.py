@@ -176,8 +176,11 @@ def create_bbox_mesh(bbox: list[float]):
     max_y = bbox[4]
     max_z = bbox[5]
 
-    if (min_z == max_z):
+    if min_z == max_z:
         verts = [[min_x, min_y, min_z], [max_x, min_y, min_z], [min_x, max_y, min_z], [max_x, max_y, min_z]]
+        faces = [(0, 1, 2), (1, 3, 2)]
+    elif min_y == max_y:
+        verts = [[min_x, min_y, min_z], [max_x, min_y, min_z], [min_x, min_y, max_z], [max_x, min_y, max_z]]
         faces = [(0, 1, 2), (1, 3, 2)]
     else:
         raise ValueError("Bounding Box configuration not yet supported")
