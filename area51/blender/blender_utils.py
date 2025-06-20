@@ -41,3 +41,27 @@ def remove_mesh(mesh_name: str):
     else:
         print(f"Mesh '{mesh_name}' not found in Blender data."
               )
+
+def recurLayerCollection(layerColl, collName):
+    found = None
+    if (layerColl.name == collName):
+        return layerColl
+    for layer in layerColl.children:
+        found = recurLayerCollection(layer, collName)
+        if found:
+            return found
+        
+def activate_collection(collection_name: str):
+    """
+    Activate a collection in Blender by its name.
+    
+    :param collection_name: The name of the collection to activate.
+    """
+    layer_collection = bpy.context.view_layer.layer_collection
+    layerColl = recurLayerCollection(layer_collection, collection_name)
+    if not layerColl:
+        raise ValueError(f"Collection '{collection_name}' not found in Blender data.")
+    bpy.context.view_layer.active_layer_collection = layerColl
+    
+
+

@@ -9,7 +9,10 @@
                         "type": "debugpy",
                         "request": "launch",
                         "program": "area51/dreamland.py",
-                        "console": "integratedTerminal"
+                        "console": "integratedTerminal",
+                        "env": {
+                                "PYTHONPATH": "${workspaceFolder}/area51"
+                        },
                 }
         ]
 }

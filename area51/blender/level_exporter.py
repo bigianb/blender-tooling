@@ -1,14 +1,16 @@
 import bpy
 import os
 
-from .blender_utils import remove_mesh, set_clips
+from a51lib.vecmath import BoundingBox
 
-from .info_reader import InfoReader
+from .blender_utils import activate_collection, remove_mesh, set_clips
 
-from .dfs import Dfs
-from .playsurface import Playsurface
-from .rigid_geom import RigidGeom
-from .level_bin import LevelBin, LevelObject
+from a51lib.info_reader import InfoReader
+
+from a51lib.dfs import Dfs
+from a51lib.playsurface import Playsurface
+from a51lib.rigid_geom import RigidGeom
+from a51lib.level_bin import LevelBin, LevelObject
 
 def dlist_to_verts_faces(dlist):
     verts = []
@@ -107,7 +109,8 @@ def export_geom(geom: RigidGeom, geom_name: str, l2w: list[float], pos, rot, col
                 material.node_tree.links.new(bsdf_node.inputs["Base Color"], teximage_node.outputs["Color"])
 
                 materials[texture.filename] = material
-            obj.active_material = material
+            # for now force the hull material
+            obj.active_material = materials['textures/a51/hull'] #material
             if l2w:
                 obj.matrix_world = [l2w[i:i+4] for i in range(0, 16, 4)]
             if pos:
@@ -187,13 +190,14 @@ def create_bbox_mesh(bbox: list[float]):
 
     return verts, faces
 
-def export_level(game_root: str, level_name: str, doom_root: str, mod_name: str, caulk: list[list[float]], verbose=False):
+def export_level(game_root: str, level_name: str, doom_root: str, caulk: list[list[float]], verbose=False):
 
     bpy.ops.wm.read_factory_settings()
+    remove_mesh("Cube")
 
-    tex_prefix = 'textures/' + mod_name + '/'
-    tex_dir = os.path.join(doom_root, 'textures', mod_name)
-    blend_dir = os.path.join(doom_root, 'maps', mod_name)
+    tex_prefix = 'textures/'
+    tex_dir = os.path.join(doom_root, 'textures')
+    blend_dir = os.path.join(doom_root, 'maps')
     level_path = os.path.join(game_root, 'LEVELS', 'CAMPAIGN', level_name)
     level_dfs = Dfs()
     level_dfs.open(os.path.join(level_path, 'LEVEL'))
@@ -216,14 +220,16 @@ def export_level(game_root: str, level_name: str, doom_root: str, mod_name: str,
     col = bpy.data.collections.new("Entities")
     bpy.context.scene.collection.children.link(col)
     obj = bpy.data.objects.new("info_player_spawn_0", None)
-    obj["classname"] = "info_player_spawn"
+    obj["classname"] = "info_player_start"
     obj.location = (start_pos[0], start_pos[1] + 320, start_pos[2])
     obj.rotation_euler = (start_pitch, 0, start_yaw)
     col.objects.link(obj)
 
+    worldspawn_col = bpy.data.collections.new("Worldspawn")
+    bpy.context.scene.collection.children.link(worldspawn_col)
     obj = bpy.data.objects.new("worldspawn", None)
     obj["classname"] = "worldspawn"
-    col.objects.link(obj)
+    worldspawn_col.objects.link(obj)
 
     resource_dfs = Dfs()
     resource_dfs.open(os.path.join(level_path, 'RESOURCE'))
@@ -239,21 +245,41 @@ def export_level(game_root: str, level_name: str, doom_root: str, mod_name: str,
     bpy.context.scene.collection.children.link(static_geom_collection)
     meshes = {}
     materials = {}
+    hull_material = bpy.data.materials.new('textures/a51/hull')
+    materials['textures/a51/hull'] = hull_material
     zone_no = 0
     for zone in playsurface.zones:
+        # For each zone, export the models (surfaces) into the static geometry collection
+        # Also create a hull based on the bounding box of the zone in the worldspawn collection
         col = bpy.data.collections.new("Zone "+str(zone_no))
         static_geom_collection.children.link(col)
         export_surfaces(col, zone, meshes, materials, rigid_geoms, zone_no, tex_dir, tex_prefix)
-        zone_no += 1
-    for zone in playsurface.portals:
-        col = bpy.data.collections.new("Portal "+str(zone_no))
-        static_geom_collection.children.link(col)
-        export_surfaces(col, zone, meshes, materials, rigid_geoms, zone_no, tex_dir, tex_prefix)
-        zone_no += 1
 
-    remove_mesh("Cube")
+        hull_bbox = None
+        for surface in zone.surfaces:
+            if hull_bbox is None:
+                hull_bbox = surface.bounding_box
+            else:
+                hull_bbox = hull_bbox.add(surface.bounding_box)
 
-    add_doors(level_bin, resource_dfs, rigid_geoms, meshes, materials, tex_dir, tex_prefix)
+        activate_collection(worldspawn_col.name)
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=hull_bbox.centre(), scale=hull_bbox.size())
+        cube = bpy.context.object
+        cube.name = "worldspawn.Zone_" + str(zone_no) + "_Hull"
+        cube.active_material = hull_material
+
+        zone_no += 1
+        break   # only export the first zone for now
+    # portal_no = 0
+    # for zone in playsurface.portals:
+    #     col = bpy.data.collections.new("Portal "+str(portal_no))
+    #     static_geom_collection.children.link(col)
+    #     export_surfaces(col, zone, meshes, materials, rigid_geoms, portal_no, tex_dir, tex_prefix)
+    #     portal_no += 1
+
+
+
+    #add_doors(level_bin, resource_dfs, rigid_geoms, meshes, materials, tex_dir, tex_prefix)
 
     if len(caulk) > 0:
         # material textures/common/caulk

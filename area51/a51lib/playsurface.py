@@ -1,5 +1,7 @@
 import struct
 
+from .vecmath import BoundingBox
+
 def read_z_string(data, offset):
     output = ''
     while data[offset] != 0:
@@ -10,7 +12,7 @@ def read_z_string(data, offset):
 class Surface:
     def __init__(self):
         self.l2w = [0.0] * 16  # 4x4 matrix
-        self.bounding_box = [0.0] * 8  # min_x, min_y, min_z, min_w, max_x, max_y, max_z, max_w
+        self.bounding_box = BoundingBox()
         self.attr_bits = 0
         self.colour_index = 0
         self.geom_name = ''
@@ -71,7 +73,7 @@ class Playsurface:
             surface = Surface()
             surface.l2w = struct.unpack_from('16f', bin_data, zone_info_offset)
             zone_info_offset += 64  # 4x4 matrix is 16 floats, each float is 4 bytes)
-            surface.bounding_box = struct.unpack_from('8f', bin_data, zone_info_offset)
+            surface.bounding_box = BoundingBox(struct.unpack_from('8f', bin_data, zone_info_offset))
             zone_info_offset += 32
             surface.attr_bits = struct.unpack_from('I', bin_data, zone_info_offset)[0]
             zone_info_offset += 4

@@ -51,7 +51,8 @@ map a51/DREAMLND.glb
 
 https://dmeat.itch.io/stack-rock-dungeon
 
-https://modwiki.dhewm3.org/RBDoom3BFG
+https://modwiki.dhewm3.org/RBDoom3BFG-Blender-Mapping
+
 
 
 
