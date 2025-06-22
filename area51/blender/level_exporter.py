@@ -1,4 +1,5 @@
 import bpy
+import bmesh
 import os
 
 from a51lib.vecmath import BoundingBox
@@ -168,28 +169,6 @@ def loadInfo(info_data):
             print(f"Unknown header type: {header.type}")
     return pos, pitch, yaw
 
-def create_bbox_mesh(bbox: list[float]):
-    verts = []
-    faces = []
-
-    min_x = bbox[0]
-    min_y = bbox[1]
-    min_z = bbox[2]
-    max_x = bbox[3]
-    max_y = bbox[4]
-    max_z = bbox[5]
-
-    if min_z == max_z:
-        verts = [[min_x, min_y, min_z], [max_x, min_y, min_z], [min_x, max_y, min_z], [max_x, max_y, min_z]]
-        faces = [(0, 1, 2), (1, 3, 2)]
-    elif min_y == max_y:
-        verts = [[min_x, min_y, min_z], [max_x, min_y, min_z], [min_x, min_y, max_z], [max_x, min_y, max_z]]
-        faces = [(0, 1, 2), (1, 3, 2)]
-    else:
-        raise ValueError("Bounding Box configuration not yet supported")
-
-    return verts, faces
-
 def export_level(game_root: str, level_name: str, doom_root: str, caulk: list[list[float]], verbose=False):
 
     bpy.ops.wm.read_factory_settings()
@@ -217,13 +196,8 @@ def export_level(game_root: str, level_name: str, doom_root: str, caulk: list[li
 
     start_pos, start_pitch, start_yaw = loadInfo(level_dfs.get_file('LEVEL_DATA.INFO'))
 
-    col = bpy.data.collections.new("Entities")
-    bpy.context.scene.collection.children.link(col)
-    obj = bpy.data.objects.new("info_player_spawn_0", None)
-    obj["classname"] = "info_player_start"
-    obj.location = (start_pos[0], start_pos[1] + 320, start_pos[2])
-    obj.rotation_euler = (start_pitch, 0, start_yaw)
-    col.objects.link(obj)
+    entities_col = bpy.data.collections.new("Entities")
+    bpy.context.scene.collection.children.link(entities_col)
 
     worldspawn_col = bpy.data.collections.new("Worldspawn")
     bpy.context.scene.collection.children.link(worldspawn_col)
@@ -263,10 +237,23 @@ def export_level(game_root: str, level_name: str, doom_root: str, caulk: list[li
                 hull_bbox = hull_bbox.add(surface.bounding_box)
 
         activate_collection(worldspawn_col.name)
-        bpy.ops.mesh.primitive_cube_add(size=1.0, location=hull_bbox.centre(), scale=hull_bbox.size())
+        # Inflate the hull by 1% to ensure no leaks
+        bpy.ops.mesh.primitive_cube_add(size=1.01, location=hull_bbox.centre(), scale=hull_bbox.size())
         cube = bpy.context.object
         cube.name = "worldspawn.Zone_" + str(zone_no) + "_Hull"
         cube.active_material = hull_material
+
+        # Flip the normals because we want them to face inwards.
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action="DESELECT")
+        bpy.ops.mesh.select_mode(type = "FACE")
+        bm = bmesh.from_edit_mesh(bpy.context.object.data)
+        bm.faces.ensure_lookup_table()
+        for face_no in range(0, 6):
+            bm.faces[face_no].select = True
+        bpy.ops.mesh.flip_normals()
+        bpy.ops.mesh.select_all(action="DESELECT")
+        bpy.ops.object.mode_set(mode='OBJECT')
 
         zone_no += 1
         break   # only export the first zone for now
@@ -281,26 +268,23 @@ def export_level(game_root: str, level_name: str, doom_root: str, caulk: list[li
 
     #add_doors(level_bin, resource_dfs, rigid_geoms, meshes, materials, tex_dir, tex_prefix)
 
-    if len(caulk) > 0:
-        # material textures/common/caulk
-        caulk_material = bpy.data.materials.new('textures/common/caulk')
-        caulk_collection = bpy.data.collections.new("Caulk")
-        bpy.context.scene.collection.children.link(caulk_collection)
-        for caulk_idx in range(0, len(caulk)):
-            mesh = bpy.data.meshes.new("caulk_"+str(caulk_idx))
-            verts, faces = create_bbox_mesh(caulk[caulk_idx])
-            mesh.from_pydata(verts, [], faces)
-            obj = bpy.data.objects.new("caulk_"+str(caulk_idx), mesh)
-            obj.active_material = caulk_material
-            caulk_collection.objects.link(obj)
+    obj = bpy.data.objects.new("info_player_spawn_0", None)
+    obj["classname"] = "info_player_start"
+    obj.location = (start_pos[0], start_pos[1] + 320, start_pos[2])
+    obj.rotation_euler = (start_pitch, 0, start_yaw)
+    entities_col.objects.link(obj)
+
+    print(f'{start_pos}' )
 
     # Select all objects and scale them by 0.1 to better match doom3 scale
-    #bpy.ops.object.select_all(action='SELECT')
-    #bpy.ops.transform.resize(value=(0.1, 0.1, 0.1))
+    # move player start to the origin
+    bpy.ops.object.select_all(action='SELECT')
+    bpy.ops.transform.translate(value=(-start_pos[0], -start_pos[1]-320, -start_pos[2]))  
+    #bpy.ops.transform.resize(value=(0.15, 0.15, 0.15))
 
     # rotate from y-up to z-up
     #bpy.ops.transform.rotate(value=-1.5708, orient_axis='X')
-    #bpy.ops.object.select_all(action='DESELECT')
+    bpy.ops.object.select_all(action='DESELECT')
 
     bpy.ops.wm.save_as_mainfile(
         filepath=blend_dir+'/'+level_name+'.blend', check_existing=False)
