@@ -81,7 +81,10 @@ def export_geom(geom: RigidGeom, geom_name: str, l2w: list[float], pos, rot, col
                 uv_data = mesh.uv_layers.new()
                 uv_data.data.foreach_set('uv', uvs)
                     
-            obj = bpy.data.objects.new(name_prefix + '_' + str(mesh_no) + '_' + str(submesh_idx), mesh)
+            obj_name = name_prefix + '_' + str(mesh_no) + '_' + str(submesh_idx)
+            obj = bpy.data.objects.new(obj_name, mesh)
+            obj["classname"] = "func_static"
+            obj["model"] = obj_name
         
             texture_idx = geom.geom.materials[submesh.idx_material].texture_index
             texture = geom.geom.textures[texture_idx]
@@ -111,7 +114,8 @@ def export_geom(geom: RigidGeom, geom_name: str, l2w: list[float], pos, rot, col
 
                 materials[texture.filename] = material
             # for now force the hull material
-            obj.active_material = materials['textures/a51/hull'] #material
+            obj.active_material = materials['textures/base_wall/james'] #material
+            
             if l2w:
                 obj.matrix_world = [l2w[i:i+4] for i in range(0, 16, 4)]
             if pos:
@@ -213,7 +217,7 @@ def export_level(game_root: str, level_name: str, doom_root: str, caulk: list[li
 
     rigid_geoms = collect_rigid_geoms(playsurface.geoms, resource_dfs)
     
-    set_clips(10, 150000)
+    set_clips(1, 15000)
 
     static_geom_collection = bpy.data.collections.new("Static Geometry")
     bpy.context.scene.collection.children.link(static_geom_collection)
@@ -221,6 +225,11 @@ def export_level(game_root: str, level_name: str, doom_root: str, caulk: list[li
     materials = {}
     hull_material = bpy.data.materials.new('textures/a51/hull')
     materials['textures/a51/hull'] = hull_material
+
+    wall_material = bpy.data.materials.new('textures/base_wall/james')
+    materials['textures/base_wall/james'] = wall_material
+    
+
     zone_no = 0
     for zone in playsurface.zones:
         # For each zone, export the models (surfaces) into the static geometry collection
@@ -270,7 +279,7 @@ def export_level(game_root: str, level_name: str, doom_root: str, caulk: list[li
 
     obj = bpy.data.objects.new("info_player_spawn_0", None)
     obj["classname"] = "info_player_start"
-    obj.location = (start_pos[0], start_pos[1] + 320, start_pos[2])
+    obj.location = (start_pos[0], start_pos[1] + 43/0.15, start_pos[2])
     obj.rotation_euler = (start_pitch, 0, start_yaw)
     entities_col.objects.link(obj)
 
@@ -279,11 +288,13 @@ def export_level(game_root: str, level_name: str, doom_root: str, caulk: list[li
     # Select all objects and scale them by 0.1 to better match doom3 scale
     # move player start to the origin
     bpy.ops.object.select_all(action='SELECT')
-    bpy.ops.transform.translate(value=(-start_pos[0], -start_pos[1]-320, -start_pos[2]))  
-    #bpy.ops.transform.resize(value=(0.15, 0.15, 0.15))
+    
+    bpy.ops.transform.resize(value=(0.15, 0.15, 0.15))
 
     # rotate from y-up to z-up
-    #bpy.ops.transform.rotate(value=-1.5708, orient_axis='X')
+    bpy.ops.transform.rotate(value=-1.5708, orient_axis='X')
+    start_pos = obj.location
+    bpy.ops.transform.translate(value=(-start_pos[0], -start_pos[1], -start_pos[2] + 43), orient_type='GLOBAL')  
     bpy.ops.object.select_all(action='DESELECT')
 
     bpy.ops.wm.save_as_mainfile(
