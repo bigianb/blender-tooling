@@ -1,6 +1,10 @@
 import bpy
 import os
 
+import numpy as np
+
+from a51lib.vecmath import Matrix4x4
+
 from .blender_utils import remove_mesh, set_clips, make_hull_box
 
 from a51lib.info_reader import InfoReader
@@ -61,19 +65,26 @@ class LevelExporter:
     tex_dir: str
     blend_dir: str
     verbose: bool
+    bake_transforms: bool
+    a51_to_blender_mtx: Matrix4x4
 
-    def __init__(self, doom_root: str, verbose: bool):
+    def __init__(self, doom_root: str, bake_transforms: bool = True, verbose: bool = False):
         self.verbose = verbose
         self.rigid_geoms = {}
         self.materials = {}
         self.meshes = {}
         self.doom_root = doom_root
+        self.bake_transforms = bake_transforms
 
         self.tex_prefix = 'textures/'
         self.tex_dir = os.path.join(doom_root, 'textures')
         self.blend_dir = os.path.join(doom_root, 'maps')
 
-    def add_door(self, obj: LevelObject, door_collection, door_idx, dfs, geoms):
+        self.a51_to_blender_mtx = Matrix4x4()
+        self.a51_to_blender_mtx.scale(0.15)
+        self.a51_to_blender_mtx.convert_zup_to_yup()
+
+    def add_door(self, obj: LevelObject, door_collection, door_idx, dfs):
         # Example Door properties:
         #
         # Base\Position = [-1700.0, 0.0, -3150.0]
@@ -87,36 +98,57 @@ class LevelExporter:
         geom = self.find_rigid_geom(geom_name, dfs)
         self.export_geom(geom, geom_name, None, pos, rot, door_collection, 'door'+str(door_idx))
 
-    def add_doors(self,level_bin: LevelBin, dfs, geoms):
+    def add_doors(self,level_bin: LevelBin, dfs):
         door_collection = bpy.data.collections.new("Doors")
         bpy.context.scene.collection.children.link(door_collection)
         door_idx = 1
         for obj in level_bin.objects:
             if obj.type_name == 'Door':
-                self.add_door(obj, door_collection, door_idx, dfs, geoms)
+                self.add_door(obj, door_collection, door_idx, dfs)
                 door_idx += 1
+
+    def apply_transform_to_vertices(self, vertices):
+        for i in range(0, len(vertices)):
+           x, y, z = vertices[i]
+           vertices[i] = self.a51_to_blender_mtx.transform(x, y, z)
+
+    def apply_a51_transform_to_vertices(awlf, l2w, vertices):
+        # l2w is column major, numpy is row major so we need to transpose it
+        xform_mtx = np.array(l2w).reshape([4, 4]).T
+
+        for i in range(0, len(vertices)):
+           x, y, z = vertices[i]
+           x, y, z, _ = xform_mtx @ [x,y,z,1] 
+           vertices[i] = (x, y, z)
 
     def export_geom(self, geom: RigidGeom, geom_name: str, l2w: list[float], pos, rot, col, name_prefix: str):
         mesh_no = 0
         for geom_mesh in geom.geom.meshes:
             for submesh_idx in range (geom_mesh.idx_sub_mesh, geom_mesh.idx_sub_mesh + geom_mesh.num_sub_meshes):
                 submesh = geom.geom.sub_meshes[submesh_idx]
-                key = geom_name + '_' + geom_mesh.name + '_' + str(submesh_idx)
+                obj_name = name_prefix + '_' + str(mesh_no) + '_' + str(submesh_idx)
+                if self.bake_transforms:
+                    # when baking transforms, each object has its own mesh
+                    key = obj_name
+                else:
+                    key = geom_name + '_' + geom_mesh.name + '_' + str(submesh_idx)
                 if key in self.meshes:
                     mesh = self.meshes[key]
                 else:
                     mesh = bpy.data.meshes.new(key)
                     
                     dlist = geom.dlists[submesh.idx_dlist]
-                    verts, faces, uvs = dlist_to_verts_faces(dlist)    
-
+                    verts, faces, uvs = dlist_to_verts_faces(dlist)
+                    if self.bake_transforms:
+                        self.apply_a51_transform_to_vertices(l2w, verts)
+                        self.apply_transform_to_vertices(verts)
                     mesh.from_pydata(verts, [], faces)
                     self.meshes[key] = mesh
 
                     uv_data = mesh.uv_layers.new()
                     uv_data.data.foreach_set('uv', uvs)
                         
-                obj_name = name_prefix + '_' + str(mesh_no) + '_' + str(submesh_idx)
+                
                 obj = bpy.data.objects.new(obj_name, mesh)
                 obj["classname"] = "func_static"
                 obj["model"] = obj_name
@@ -151,8 +183,9 @@ class LevelExporter:
                 # for now force the hull material
                 obj.active_material = self.materials['textures/base_wall/james'] #material
                 
-                if l2w:
-                    obj.matrix_world = [l2w[i:i+4] for i in range(0, 16, 4)]
+                if not self.bake_transforms:
+                    if l2w:
+                        obj.matrix_world = [l2w[i:i+4] for i in range(0, 16, 4)]
                 if pos:
                     obj.location = (pos[0], pos[1], pos[2])
                 if rot:
@@ -260,7 +293,12 @@ class LevelExporter:
                 else:
                     hull_bbox = hull_bbox.add(surface.bounding_box)
             hull_name = "worldspawn.Zone_" + str(zone_no) + "_Hull"
-            make_hull_box(worldspawn_col.name, hull_bbox.centre(), hull_bbox.size(), hull_name, hull_material)
+
+            cx, cy, cz = hull_bbox.centre()
+            centre = self.a51_to_blender_mtx.transform(cx, cy, cz)
+            sx, sy, sz = hull_bbox.size()
+            size = self.a51_to_blender_mtx.transform(sx, sy, sz)
+            make_hull_box(worldspawn_col.name, centre, size, hull_name, hull_material)
 
             zone_no += 1
             break   # only export the first zone for now
@@ -283,15 +321,15 @@ class LevelExporter:
 
         # Select all objects and scale them by 0.1 to better match doom3 scale
         # move player start to the origin
-        bpy.ops.object.select_all(action='SELECT')
+        #bpy.ops.object.select_all(action='SELECT')
         
-        bpy.ops.transform.resize(value=(0.15, 0.15, 0.15))
+        # bpy.ops.transform.resize(value=(0.15, 0.15, 0.15))
 
-        # rotate from y-up to z-up
-        bpy.ops.transform.rotate(value=-1.5708, orient_axis='X')
-        start_pos = obj.location
-        bpy.ops.transform.translate(value=(-start_pos[0], -start_pos[1], -start_pos[2] + 43), orient_type='GLOBAL')  
-        bpy.ops.object.select_all(action='DESELECT')
+        # # rotate from y-up to z-up
+        # bpy.ops.transform.rotate(value=-1.5708, orient_axis='X')
+        #start_pos = obj.location
+        #bpy.ops.transform.translate(value=(-start_pos[0], -start_pos[1], -start_pos[2] + 43), orient_type='GLOBAL')  
+        #ßbpy.ops.object.select_all(action='DESELECT')
 
         bpy.ops.wm.save_as_mainfile(
             filepath=self.blend_dir+'/'+level_name+'.blend', check_existing=False)

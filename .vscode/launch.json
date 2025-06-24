@@ -12,7 +12,7 @@
                         "console": "integratedTerminal",
                         "env": {
                                 "PYTHONPATH": "${workspaceFolder}/area51"
-                        },
+                        }
                 }
         ]
 }

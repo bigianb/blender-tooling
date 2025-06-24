@@ -25,5 +25,5 @@ with open(os.path.join(materials_path, "hull.mtr"), "w") as myfile:
     myfile.write(hull_material)
 
 
-LevelExporter(doom_root, verbose=False).export_level(game_root, 'DREAMLND')
+LevelExporter(doom_root).export_level(game_root, 'DREAMLND')
 #export_level(game_root, 'CAVES', './export/levels')
