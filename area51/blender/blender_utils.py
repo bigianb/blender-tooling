@@ -1,4 +1,5 @@
 import bpy
+import bmesh
 
 # ref https://modwiki.dhewm3.org/RBDoom3BFG-Blender-Mapping
 
@@ -63,5 +64,23 @@ def activate_collection(collection_name: str):
         raise ValueError(f"Collection '{collection_name}' not found in Blender data.")
     bpy.context.view_layer.active_layer_collection = layerColl
     
+def make_hull_box(collection_name: str, centre_pos, size, name, material):
+    activate_collection(collection_name)
+    # Inflate the hull by 1% to ensure no leaks
+    bpy.ops.mesh.primitive_cube_add(size=1.01, location=centre_pos, scale=size)
+    cube = bpy.context.object
+    cube.name = name
+    cube.active_material = material
 
+    # Flip the normals because we want them to face inwards.
+    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.ops.mesh.select_all(action="DESELECT")
+    bpy.ops.mesh.select_mode(type = "FACE")
+    bm = bmesh.from_edit_mesh(bpy.context.object.data)
+    bm.faces.ensure_lookup_table()
+    for face_no in range(0, 6):
+        bm.faces[face_no].select = True
+    bpy.ops.mesh.flip_normals()
+    bpy.ops.mesh.select_all(action="DESELECT")
+    bpy.ops.object.mode_set(mode='OBJECT')
 
