@@ -64,6 +64,17 @@ class Dfs:
             print(
                 f"{name:<48} start:{entry['data_offset']:>8},  length:{entry['data_length']:>8}")
 
+    def get_filenames(self, extension: str) -> list[str]:
+        """ Get a list of filenames with the given extension """
+        target_ext = extension.casefold()
+        filenames = []
+        for entry in self.file_entries:
+            entry_ext = entry['ext_name'].casefold()
+            if entry_ext == target_ext:
+                name = entry['file_name1'] + entry['file_name2'] + entry['ext_name']
+                filenames.append(name)
+        return filenames
+
     def get_file(self, sub_filename: str) -> bytes | None:
         """ Get the data for a sub-file. Assumes that there is only one data file """
         target = sub_filename.casefold()

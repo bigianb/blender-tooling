@@ -4,6 +4,7 @@ import os
 import numpy as np
 
 from a51lib.vecmath import Matrix4x4
+from .bitmap_exporter import export_bitmaps
 
 from .blender_utils import remove_mesh, set_clips, make_hull_box
 
@@ -267,6 +268,8 @@ class LevelExporter:
 
         self.collect_rigid_geoms(playsurface.geoms, resource_dfs)
         
+        export_bitmaps(resource_dfs, self.tex_dir)
+
         set_clips(1, 15000)
 
         static_geom_collection = bpy.data.collections.new("Static Geometry")

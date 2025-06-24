@@ -78,7 +78,7 @@ class LevelBin:
             # Invisible Wall objects are windows
             #verbose |= obj.type_name == 'Invisible Wall'
             #verbose |= obj.type_name == 'Anim Surface'
-            verbose |= obj.type_name == 'Door'
+            #verbose |= obj.type_name == 'Door'
 
             for prop_idx in range(start_idx, end_idx):
                 prop = self.properties[prop_idx]
