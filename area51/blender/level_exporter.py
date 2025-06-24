@@ -1,9 +1,7 @@
 import bpy
 import os
 
-from a51lib.vecmath import BoundingBox
-
-from .blender_utils import activate_collection, remove_mesh, set_clips, make_hull_box
+from .blender_utils import remove_mesh, set_clips, make_hull_box
 
 from a51lib.info_reader import InfoReader
 
@@ -86,7 +84,7 @@ class LevelExporter:
         geom_name = obj.properties['RenderInst\\File']
         pos = obj.properties['Base\\Position']
         rot = obj.properties['Base\\Rotation']
-        geom = self.find_rigid_geom(geom_name, dfs, geoms)
+        geom = self.find_rigid_geom(geom_name, dfs)
         self.export_geom(geom, geom_name, None, pos, rot, door_collection, 'door'+str(door_idx))
 
     def add_doors(self,level_bin: LevelBin, dfs, geoms):
