@@ -80,9 +80,13 @@ class LevelExporter:
         self.tex_prefix = 'textures/'
         self.tex_dir = os.path.join(doom_root, 'textures')
         self.blend_dir = os.path.join(doom_root, 'maps')
+        self.setup_transform_matrix([0,0,0])
+        
 
+    def setup_transform_matrix(self, trans, scale = 0.4):
         self.a51_to_blender_mtx = Matrix4x4()
-        self.a51_to_blender_mtx.scale(0.15)
+        self.a51_to_blender_mtx.translate(trans)
+        self.a51_to_blender_mtx.scale(scale)
         self.a51_to_blender_mtx.convert_zup_to_yup()
 
     def add_door(self, obj: LevelObject, door_collection, door_idx, dfs):
@@ -251,6 +255,14 @@ class LevelExporter:
 
         start_pos, start_pitch, start_yaw = loadInfo(level_dfs.get_file('LEVEL_DATA.INFO'))
 
+        # A51 has player start on the floor whilst doom3 has it 32 units high (?)
+        # ensure the origin is inside the hull.
+        scale = 0.4
+        self.setup_transform_matrix([-start_pos[0], -start_pos[1]-8.0/scale, -start_pos[2]], scale)
+
+        # doom3 units
+        start_pos = (0,0,32)
+
         entities_col = bpy.data.collections.new("Entities")
         bpy.context.scene.collection.children.link(entities_col)
 
@@ -297,11 +309,8 @@ class LevelExporter:
                     hull_bbox = hull_bbox.add(surface.bounding_box)
             hull_name = "worldspawn.Zone_" + str(zone_no) + "_Hull"
 
-            cx, cy, cz = hull_bbox.centre()
-            centre = self.a51_to_blender_mtx.transform(cx, cy, cz)
-            sx, sy, sz = hull_bbox.size()
-            size = self.a51_to_blender_mtx.transform(sx, sy, sz)
-            make_hull_box(worldspawn_col.name, centre, size, hull_name, hull_material)
+            hull_bbox = hull_bbox.transform(self.a51_to_blender_mtx)
+            make_hull_box(worldspawn_col.name, hull_bbox.centre(), hull_bbox.size(), hull_name, hull_material)
 
             zone_no += 1
             break   # only export the first zone for now
@@ -316,23 +325,10 @@ class LevelExporter:
 
         obj = bpy.data.objects.new("info_player_spawn_0", None)
         obj["classname"] = "info_player_start"
-        obj.location = (start_pos[0], start_pos[1] + 43/0.15, start_pos[2])
-        obj.rotation_euler = (start_pitch, 0, start_yaw)
+        obj.location = (start_pos[0], start_pos[1], start_pos[2])
+        # pitch and yaw we should write into the custom properties
+        #obj.rotation_euler = (start_pitch, 0, start_yaw)
         entities_col.objects.link(obj)
-
-        print(f'{start_pos}' )
-
-        # Select all objects and scale them by 0.1 to better match doom3 scale
-        # move player start to the origin
-        #bpy.ops.object.select_all(action='SELECT')
-        
-        # bpy.ops.transform.resize(value=(0.15, 0.15, 0.15))
-
-        # # rotate from y-up to z-up
-        # bpy.ops.transform.rotate(value=-1.5708, orient_axis='X')
-        #start_pos = obj.location
-        #bpy.ops.transform.translate(value=(-start_pos[0], -start_pos[1], -start_pos[2] + 43), orient_type='GLOBAL')  
-        #ßbpy.ops.object.select_all(action='DESELECT')
 
         bpy.ops.wm.save_as_mainfile(
             filepath=self.blend_dir+'/'+level_name+'.blend', check_existing=False)

@@ -41,7 +41,7 @@ class XBmp:
          row_pix = []
          argb_data.append(row_pix)
          pix_idx = row * self.physical_width * 4
-         for col in range (0, self.width):
+         for _ in range (0, self.width):
             row_pix.append(converted_pixel_data[pix_idx + 1])
             row_pix.append(converted_pixel_data[pix_idx + 2])
             row_pix.append(converted_pixel_data[pix_idx + 3])

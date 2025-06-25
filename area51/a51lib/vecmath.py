@@ -1,5 +1,43 @@
 import numpy as np
 
+class Matrix4x4:
+
+    m4: np.ndarray
+
+    def __init__(self):
+        self.m4 = np.eye(4)
+
+    def scale(self, val):
+        scaling_matrix = np.array([[val, 0, 0, 0],
+                                  [0, val, 0, 0],
+                                  [0, 0, val, 0],
+                                  [0, 0, 0, 1]], dtype=float)
+
+        self.m4 = scaling_matrix @ self.m4
+
+    def translate(self, trans):
+        translation_matrix = np.array([[1.0, 0, 0, trans[0]],
+                                       [0, 1.0, 0, trans[1]],
+                                       [0, 0, 1.0, trans[2]],
+                                       [0, 0, 0, 1]], dtype=float)
+        self.m4 = translation_matrix @ self.m4
+
+    def convert_zup_to_yup(self):
+        """ Convert from being z-up to y-up. Basically a 90 degree roation around the x-axis.
+            Special case to keep numbers accurate.
+        """
+        cos_a = 0
+        sin_a = 1
+        rotation_matrix = np.array([[1, 0, 0, 0],
+                                    [0, cos_a, -sin_a, 0],
+                                    [0, sin_a, cos_a, 0],
+                                    [0, 0, 0, 1]], dtype=float)
+        self.m4 = rotation_matrix @ self.m4
+
+    def transform(self, x: float, y: float, z: float) -> list[float]:
+        x1, y1, z1, _ = self.m4 @ [x, y, z, 1]
+        return (x1, y1, z1)
+
 
 class BoundingBox:
 
@@ -48,37 +86,13 @@ class BoundingBox:
             self.max_z - self.min_z
         )
 
+    def transform(self, mtx: Matrix4x4) -> 'BoundingBox':
+        x0, y0, z0 = mtx.transform(self.min_x, self.min_y, self.min_z)
+        x1, y1, z1 = mtx.transform(self.max_x, self.max_y, self.max_z)
+
+        return BoundingBox([min(x0, x1), min(y0, y1), min(z0, z1), max(x0, x1), max(y0, y1), max(z0, z1)])
+
     def __repr__(self):
         return f"BoundingBox({self.min_x}, {self.min_y}, {self.min_z}, {self.max_x}, {self.max_y}, {self.max_z})"
 
 
-class Matrix4x4:
-
-    m4: np.ndarray
-
-    def __init__(self):
-        self.m4 = np.eye(4)
-
-    def scale(self, val):
-        scaling_matrix = np.array([[val, 0, 0, 0],
-                                  [0, val, 0, 0],
-                                  [0, 0, val, 0],
-                                  [0, 0, 0, 1]], dtype=float)
-
-        self.m4 = scaling_matrix @ self.m4
-
-    def convert_zup_to_yup(self):
-        """ Convert from being z-up to y-up. Basically a -90 degree roation around the x-axis.
-            Special case to keep numbers accurate.
-        """
-        cos_a = 0
-        sin_a = -1
-        rotation_matrix = np.array([[1, 0, 0, 0],
-                                    [0, cos_a, -sin_a, 0],
-                                    [0, sin_a, cos_a, 0],
-                                    [0, 0, 0, 1]], dtype=float)
-        self.m4 = rotation_matrix @ self.m4
-
-    def transform(self, x: float, y: float, z: float) -> list[float]:
-        x1, y1, z1, _ =  self.m4 @ [x, y, z, 1]
-        return (x1, y1, z1)
