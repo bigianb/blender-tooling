@@ -60,6 +60,7 @@ class LevelExporter:
 
     rigid_geoms:  dict[str, RigidGeom]
     materials: dict[str, bpy.types.Material]
+    doom_materials: dict[str, str]
     meshes: dict[str, bpy.types.Mesh]
     doom_root: str
     tex_prefix: str
@@ -73,6 +74,7 @@ class LevelExporter:
         self.verbose = verbose
         self.rigid_geoms = {}
         self.materials = {}
+        self.doom_materials = {}
         self.meshes = {}
         self.doom_root = doom_root
         self.bake_transforms = bake_transforms
@@ -185,8 +187,12 @@ class LevelExporter:
                     material.node_tree.links.new(bsdf_node.inputs["Base Color"], teximage_node.outputs["Color"])
 
                     self.materials[texture.filename] = material
+                    
+                    self.doom_materials[self.tex_prefix+tex_basename] = "    diffusemap " + material.name + ".png\n"
                 # for now force the hull material
-                obj.active_material = self.materials['textures/base_wall/james'] #material
+                obj.active_material = material
+                # use this to test with no materials
+                #obj.active_material = self.materials['textures/base_wall/james']
                 
                 if not self.bake_transforms:
                     if l2w:
@@ -329,6 +335,13 @@ class LevelExporter:
         # pitch and yaw we should write into the custom properties
         #obj.rotation_euler = (start_pitch, 0, start_yaw)
         entities_col.objects.link(obj)
+
+        materials_path = os.path.join(self.doom_root, 'materials')
+        with open(os.path.join(materials_path, level_name+".mtr"), "w") as mtr_file:
+            for mat_name, mat in self.doom_materials.items():
+                mtr_file.write(mat_name + "\n{\n")
+                mtr_file.write(mat)
+                mtr_file.write("}\n\n")
 
         bpy.ops.wm.save_as_mainfile(
             filepath=self.blend_dir+'/'+level_name+'.blend', check_existing=False)

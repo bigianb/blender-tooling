@@ -5,7 +5,7 @@ import png
 from .data_reader import DataReader
 
 class XBmpFormat(IntEnum):
-    FMT_3ARGB_8888 = 3
+    FMT_ARGB_8888 = 3
 
 class XBmp:
      
@@ -42,10 +42,10 @@ class XBmp:
          argb_data.append(row_pix)
          pix_idx = row * self.physical_width * 4
          for _ in range (0, self.width):
-            row_pix.append(converted_pixel_data[pix_idx + 1])
             row_pix.append(converted_pixel_data[pix_idx + 2])
+            row_pix.append(converted_pixel_data[pix_idx + 1])
+            row_pix.append(converted_pixel_data[pix_idx + 0])
             row_pix.append(converted_pixel_data[pix_idx + 3])
-            row_pix.append(converted_pixel_data[pix_idx])
             pix_idx += 4
       png_obj = png.from_array(argb_data, mode='RGBA')
       with open(filename, 'wb') as file:
@@ -54,7 +54,7 @@ class XBmp:
 
 # pypng docs https://drj11.gitlab.io/pypng/
    def _convert_to_32bpp(self):
-      if self.format == XBmpFormat.FMT_3ARGB_8888:
+      if self.format == XBmpFormat.FMT_ARGB_8888:
          return self.orig_pixel_data
       print("*** Unimplemented format: " + str(format))
       
