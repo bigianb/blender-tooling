@@ -7,7 +7,7 @@ class DataReader:
     data: bytes
     len: int
 
-    def __init__(self, data, cursor = 0):
+    def __init__(self, data: bytes, cursor: int = 0):
         self.data = data
         self.len = len(data)
         self.cursor_stack = []
@@ -72,19 +72,19 @@ class DataReader:
         self.cursor += 4 * 4 * 2
         return bb
 
-    def read_byte_array(self, count):
+    def read_byte_array(self, count: int) -> bytes:
         """ Reads a byte array of given count. """
         start = self.cursor
         self.cursor += count
         return self.data[start:start+count]
 
-    def read_float_array(self, count):
+    def read_float_array(self, count: int) -> list[float]:
         """ Reads an array of floats. """
         start = self.cursor
         self.cursor += 4 * count
         return struct.unpack_from(f'{count}f', self.data, start)
     
-    def read_uint8_array(self, count):
+    def read_uint8_array(self, count: int):
         """ Reads an array of unsigned 8 bit integers. """
         start = self.cursor
         self.cursor += count

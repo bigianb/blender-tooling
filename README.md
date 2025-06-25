@@ -27,8 +27,8 @@ You will need the Area 51 game data. Many people have this because it was distri
 Set the environment variable `A51_GAME_DATA` to the root of the PC game data (the directory which contains the file BOOT.DFS).
 Set the environment variable `A51_DOOM_DATA` to where the mod will be written. If your doom base directory is at /xxx/yyy/base then set I suggest setting this to /xxx/yyy/a51mod. 
 
-Running Dreamland in VSCode will create a blend file in maps in the `A51_DOOM_DATA` directory.
-The exporter currently expects to find the textures in the textures directory. Right now you need to use something like DFSViewer to populate this (just export all to that location) but eventually the python script will create them.
+Running Dreamland in VSCode will create a blend file in the maps directory under the `A51_DOOM_DATA` directory. It will similarly create png image files in the textures sub-directory and material definitions under the materials sub-directory.
+
 
 ## Export to gltf
 Use the blender export to create a .glb file in the same location as the blend file. You need to ensure that you select custom properties are selected in the export options.
