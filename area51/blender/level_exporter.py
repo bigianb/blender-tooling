@@ -166,7 +166,7 @@ class LevelExporter:
                     material = self.materials[texture.filename]
                 else:
                     # https://docs.blender.org/api/current/bpy.types.Material.html#bpy.types.Material
-                    tex_basename = texture.filename.split('.')[0].upper()
+                    tex_basename = texture.filename.split('.')[0].casefold().replace('[', '_').replace(']', '_').strip()
                     img_path = os.path.join(self.tex_dir, tex_basename+".png")
                     img_path = os.path.abspath(img_path)
 

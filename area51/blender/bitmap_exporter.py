@@ -21,8 +21,8 @@ def export_bitmaps(resource_dfs: Dfs, output_path: str):
         xbmp.read(xbmp_data)
         
         # Construct the output filename
-        base_name = os.path.splitext(os.path.basename(xbmp_file))[0]
-        output_filename = os.path.join(output_path, f"{base_name}.png")
+        base_name = os.path.splitext(os.path.basename(xbmp_file))[0].casefold().strip()
+        output_filename = os.path.join(output_path, f"{base_name}.png").replace('[', '_').replace(']', '_')
         
         # Write the bitmap to a PNG file
         xbmp.write_png(output_filename)
