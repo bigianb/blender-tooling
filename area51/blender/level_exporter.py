@@ -300,6 +300,7 @@ class LevelExporter:
         self.materials['textures/base_wall/james'] = wall_material
         
         zone_no = 0
+        hull_bbox = None
         for zone in playsurface.zones:
             # For each zone, export the models (surfaces) into the static geometry collection
             # Also create a hull based on the bounding box of the zone in the worldspawn collection
@@ -307,19 +308,13 @@ class LevelExporter:
             static_geom_collection.children.link(col)
             self.export_surfaces(col, zone, zone_no)
 
-            hull_bbox = None
             for surface in zone.surfaces:
                 if hull_bbox is None:
                     hull_bbox = surface.bounding_box
                 else:
                     hull_bbox = hull_bbox.add(surface.bounding_box)
-            hull_name = "worldspawn.Zone_" + str(zone_no) + "_Hull"
-
-            hull_bbox = hull_bbox.transform(self.a51_to_blender_mtx)
-            make_hull_box(worldspawn_col.name, hull_bbox.centre(), hull_bbox.size(), hull_name, hull_material)
-
             zone_no += 1
-            break   # only export the first zone for now
+            #break   # only export the first zone for now
         # portal_no = 0
         # for zone in playsurface.portals:
         #     col = bpy.data.collections.new("Portal "+str(portal_no))
@@ -328,6 +323,11 @@ class LevelExporter:
         #     portal_no += 1
 
         #add_doors(level_bin, resource_dfs, materials, tex_dir, tex_prefix)
+
+        hull_name = "worldspawn.Zone_" + str(zone_no) + "_Hull"
+
+        hull_bbox = hull_bbox.transform(self.a51_to_blender_mtx)
+        make_hull_box(worldspawn_col.name, hull_bbox.centre(), hull_bbox.size(), hull_name, hull_material)
 
         obj = bpy.data.objects.new("info_player_spawn_0", None)
         obj["classname"] = "info_player_start"
