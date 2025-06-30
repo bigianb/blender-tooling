@@ -31,13 +31,13 @@ def dlist_to_verts_faces(dlist):
         
         vertex = dlist.vertices[vidx1]
         uvs.append(vertex.uv[0])
-        uvs.append(vertex.uv[1])
+        uvs.append(1.0 -vertex.uv[1])
         vertex = dlist.vertices[vidx2]
         uvs.append(vertex.uv[0])
-        uvs.append(vertex.uv[1])
+        uvs.append(1.0 - vertex.uv[1])
         vertex = dlist.vertices[vidx3]
         uvs.append(vertex.uv[0])
-        uvs.append(vertex.uv[1])
+        uvs.append(1.0 - vertex.uv[1])
     return verts, faces, uvs
 
 def loadInfo(info_data):
@@ -314,7 +314,10 @@ class LevelExporter:
                 else:
                     hull_bbox = hull_bbox.add(surface.bounding_box)
             zone_no += 1
-            #break   # only export the first zone for now
+            if zone_no > 2:
+                # debugging check
+                break
+
         # portal_no = 0
         # for zone in playsurface.portals:
         #     col = bpy.data.collections.new("Portal "+str(portal_no))
