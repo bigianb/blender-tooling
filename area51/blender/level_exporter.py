@@ -159,6 +159,7 @@ class LevelExporter:
                 obj = bpy.data.objects.new(obj_name, mesh)
                 obj["classname"] = "func_static"
                 obj["model"] = obj_name
+                obj["orig_mesh"] = geom_name + '_' + geom_mesh.name + '_' + str(submesh_idx)
             
                 texture_idx = geom.geom.materials[submesh.idx_material].texture_index
                 texture = geom.geom.textures[texture_idx]
@@ -314,7 +315,7 @@ class LevelExporter:
                 else:
                     hull_bbox = hull_bbox.add(surface.bounding_box)
             zone_no += 1
-            if zone_no > 2:
+            if zone_no > 3:
                 # debugging check
                 break
 
