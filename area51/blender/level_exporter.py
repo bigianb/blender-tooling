@@ -188,8 +188,8 @@ class LevelExporter:
                     material.node_tree.links.new(bsdf_node.inputs["Base Color"], teximage_node.outputs["Color"])
 
                     self.materials[texture.filename] = material
-                    
-                    self.doom_materials[self.tex_prefix+tex_basename] = "    diffusemap " + material.name + ".png\n"
+                    # Ignore alpha on everythign for now. TODO: Look at material flags to figure out the right thing to do.
+                    self.doom_materials[self.tex_prefix+tex_basename] = "{ blend diffusemap\n map " + material.name + ".png\n alphaTest 0.0}"
                 # for now force the hull material
                 obj.active_material = material
                 # use this to test with no materials
